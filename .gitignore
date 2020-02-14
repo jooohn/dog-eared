@@ -1,2 +1,13 @@
+.envrc
 *.class
 *.log
+/target
+/domain/target
+/use-cases/target
+/tests/target
+/server/target
+/driven-ports/target
+/driven-adapters/target
+/config/target
+/project/target
+/project/project

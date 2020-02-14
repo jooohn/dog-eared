@@ -1,0 +1,9 @@
+version: "3.7"
+services:
+  postgresql:
+    image: postgres:12
+    ports:
+      - '5432:5432'
+    volumes:
+      - ./pg-data:/var/lib/postgresql/data
+      - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
