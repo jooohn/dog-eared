@@ -1,2 +1,11 @@
 *.class
 *.log
+/target
+/domain/target
+/use-cases/target
+/tests/target
+/server/target
+/driven-ports/target
+/driven-adapters/target
+/project/target
+/project/project
