@@ -13,7 +13,7 @@ package object dogeared {
 
   implicit val tx: Transactor.Aux[IO, Unit] = Transactor.fromDriverManager[IO](
     "org.postgresql.Driver",
-    s"jdbc:postgresql://${testConfig.db.host}:${testConfig.db.port}/dog_eared",
+    s"jdbc:postgresql://${testConfig.db.host}:${testConfig.db.port}/dog_eared_test",
     testConfig.db.user,
     testConfig.db.password,
     Blocker.liftExecutionContext(ExecutionContexts.synchronous)
