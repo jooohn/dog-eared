@@ -24,3 +24,10 @@ CREATE TABLE kindle_quoted_tweets (
 
 CREATE INDEX ON kindle_quoted_tweets (twitter_user_id);
 CREATE INDEX ON kindle_quoted_tweets (book_id);
+
+CREATE TABLE processed_tweets (
+    twitter_user_id         VARCHAR(32) NOT NULL PRIMARY KEY REFERENCES twitter_users(id),
+    last_processed_tweet_id VARCHAR(32) NOT NULL,
+    created_at              TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at              TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP
+)

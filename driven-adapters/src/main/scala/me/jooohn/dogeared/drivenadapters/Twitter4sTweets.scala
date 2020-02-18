@@ -5,32 +5,40 @@ import java.net.URL
 import cats.effect.{ContextShift, IO}
 import com.danielasfregola.twitter4s.TwitterRestClient
 import com.danielasfregola.twitter4s.entities.{Tweet => Twitter4sTweet}
-import me.jooohn.dogeared.domain.{AmazonRedirectorURL, Tweet, TwitterUserId}
-import me.jooohn.dogeared.drivenports.Tweets
+import me.jooohn.dogeared.domain.{AmazonRedirectorURL, Tweet, TweetId, TwitterUserId}
+import me.jooohn.dogeared.drivenports.{ProcessedTweets, Tweets}
 
 import scala.concurrent.ExecutionContext
 import scala.util.Try
 
-class Twitter4sTweets(restClient: TwitterRestClient)(implicit CS: ContextShift[IO], ec: ExecutionContext)
+class Twitter4sTweets(restClient: TwitterRestClient, processedTweets: ProcessedTweets[IO])(
+    implicit CS: ContextShift[IO],
+    ec: ExecutionContext)
     extends Tweets[IO] {
 
   override def processNewTweets(twitterUserId: TwitterUserId)(f: List[Tweet] => IO[Unit]): IO[Unit] =
     for {
-      tweets <- resolveTweets(twitterUserId)
+      processedTweet <- processedTweets.resolveByUserId(twitterUserId)
+      tweets <- resolveTweets(twitterUserId, sinceTweetId = processedTweet.map(_.lastProcessedTweetId))
       _ <- f(tweets)
+      _ <- recordLastProcessedTweetId(twitterUserId, tweets.headOption.map(_.id))
     } yield ()
 
-  private def resolveTweets(twitterUserId: TwitterUserId): IO[List[Tweet]] =
+  private def resolveTweets(twitterUserId: TwitterUserId, sinceTweetId: Option[TweetId]): IO[List[Tweet]] =
     IO.fromFuture(
         IO(
           restClient.userTimelineForUserId(
             twitterUserId.toLong,
+            since_id = sinceTweetId.map(_.toLong),
             exclude_replies = true,
             include_rts = false,
           )))
       .map { readData =>
         readData.data.toList.flatMap(_.toTweet)
       }
+
+  private def recordLastProcessedTweetId(twitterUserId: TwitterUserId, lastProcessedTweet: Option[TweetId]): IO[Unit] =
+    lastProcessedTweet.fold(IO.unit)(processedTweets.recordLastProcessedTweetId(twitterUserId, _))
 
   implicit class Twitter4sTweetOps(tweet: Twitter4sTweet) {
 

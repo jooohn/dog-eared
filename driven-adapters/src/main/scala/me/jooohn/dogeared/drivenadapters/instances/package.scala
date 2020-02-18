@@ -7,5 +7,6 @@ package object instances {
   object kindleQuotedTweet extends KindleQuotedTweetInstances
   object kindleBook extends KindleBookInstances
   object twitterUser extends TwitterUserInstances
+  object processedTweet extends ProcessedTweetInstances
 
 }

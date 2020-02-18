@@ -5,3 +5,4 @@ trait AllInstances
     with KindleQuotedTweetInstances
     with KindleBookInstances
     with TwitterUserInstances
+    with ProcessedTweetInstances
