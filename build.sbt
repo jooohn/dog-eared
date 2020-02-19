@@ -66,14 +66,27 @@ lazy val drivenAdapters = (project in file("driven-adapters"))
   .dependsOn(drivenPorts)
   .enablePlugins(FlywayPlugin)
 
-lazy val config = (project in file("config"))
+lazy val app = (project in file("app"))
   .settings(commonSettings)
   .settings(
-    name := "dog-eared-config",
+    name := "dog-eared-app",
     libraryDependencies ++= Seq(
       "is.cir" %% "ciris" % "1.0.4",
+      "com.softwaremill.macwire" % "macros_2.13" % "2.3.3",
     )
   )
+  .dependsOn(useCases, drivenPorts, drivenAdapters)
+
+lazy val cli = (project in file("cli"))
+  .settings(commonSettings)
+  .settings(
+    name := "dog-eared-cli",
+    libraryDependencies ++= Seq(
+      "com.monovore" %% "decline" % "1.0.0",
+      "com.monovore" %% "decline-effect" % "1.0.0",
+    ),
+  )
+  .dependsOn(app)
 
 lazy val tests = (project in file("tests"))
   .settings(commonSettings)
@@ -84,5 +97,5 @@ lazy val tests = (project in file("tests"))
     ),
     testFrameworks += new TestFramework("munit.Framework")
   )
-  .dependsOn(useCases, drivenAdapters, config)
+  .dependsOn(useCases, drivenAdapters, app)
 

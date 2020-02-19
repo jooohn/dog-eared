@@ -8,12 +8,10 @@ import com.danielasfregola.twitter4s.entities.{Tweet => Twitter4sTweet}
 import me.jooohn.dogeared.domain.{AmazonRedirectorURL, Tweet, TweetId, TwitterUserId}
 import me.jooohn.dogeared.drivenports.{ProcessedTweets, Tweets}
 
-import scala.concurrent.ExecutionContext
 import scala.util.Try
 
 class Twitter4sTweets(restClient: TwitterRestClient, processedTweets: ProcessedTweets[IO])(
-    implicit CS: ContextShift[IO],
-    ec: ExecutionContext)
+    implicit CS: ContextShift[IO])
     extends Tweets[IO] {
 
   override def processNewTweets(twitterUserId: TwitterUserId)(f: List[Tweet] => IO[Unit]): IO[Unit] =

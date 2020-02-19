@@ -1,4 +1,4 @@
-package me.jooohn.dogeared.config
+package me.jooohn.dogeared.app
 
 import cats.effect.{Async, ContextShift}
 import ciris.ConfigValue

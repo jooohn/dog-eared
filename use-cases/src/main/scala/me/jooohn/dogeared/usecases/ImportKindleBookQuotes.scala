@@ -5,7 +5,7 @@ import cats.implicits._
 import me.jooohn.dogeared.domain.{KindleBook, KindleQuotedTweet, Tweet, TweetId, TwitterUserId}
 import me.jooohn.dogeared.drivenports._
 
-class SyncKindleBookQuotes[F[_]: Monad](
+class ImportKindleBookQuotes[F[_]: Monad](
     tweets: Tweets[F],
     kindleQuotePages: KindleQuotePages[F],
     kindleQuotedTweets: KindleQuotedTweets[F],

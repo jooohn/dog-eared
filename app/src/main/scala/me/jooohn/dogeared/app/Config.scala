@@ -1,4 +1,4 @@
-package me.jooohn.dogeared.config
+package me.jooohn.dogeared.app
 import ciris._
 import cats.implicits._
 
@@ -6,14 +6,16 @@ case class DBConfig(
     host: String,
     port: Int,
     user: String,
-    password: String
+    password: String,
+    threadPoolSize: Int,
 )
 object DBConfig extends ConfigCompanion[DBConfig] {
   val configValue: ConfigValue[DBConfig] = (
     env("DB_HOST").default("localhost"),
     env("DB_PORT").default("5432").as[Int],
     env("DB_USER").default("postgres"),
-    env("DB_PASSWORD").default("")
+    env("DB_PASSWORD").default(""),
+    env("DB_THREAD_POOL_SIZE").default("30").as[Int],
   ).parMapN(DBConfig.apply)
 }
 

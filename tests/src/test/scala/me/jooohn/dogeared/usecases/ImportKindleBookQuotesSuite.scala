@@ -13,7 +13,7 @@ import me.jooohn.dogeared.drivenadapters.{
 }
 import me.jooohn.dogeared.drivenports.KindleQuotePage
 
-class SyncKindleBookQuotesSuite extends munit.FunSuite {
+class ImportKindleBookQuotesSuite extends munit.FunSuite {
   import me.jooohn.dogeared._
 
   val testUser = TwitterUser("12345", "jooohn1234")
@@ -26,7 +26,7 @@ class SyncKindleBookQuotesSuite extends munit.FunSuite {
   test("should save KindleQuotedTweets with quote data") {
     val tweets =
       new InMemoryTweets[IO](Tweet("123", testUser.id, testAmazonURL) :: Nil)
-    val useCase = new SyncKindleBookQuotes[IO](
+    val useCase = new ImportKindleBookQuotes[IO](
       tweets = tweets,
       kindleQuotePages = new InMemoryKindleQuotePages[IO](
         Map(

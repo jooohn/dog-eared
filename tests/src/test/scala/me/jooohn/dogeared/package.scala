@@ -3,7 +3,7 @@ package me.jooohn
 import cats.effect.{Blocker, ContextShift, IO}
 import doobie.util.ExecutionContexts
 import doobie.util.transactor.Transactor
-import me.jooohn.dogeared.config.Config
+import me.jooohn.dogeared.app.Config
 
 package object dogeared {
 
