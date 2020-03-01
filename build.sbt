@@ -1,5 +1,6 @@
 
 lazy val catsVersion = "2.1.0"
+lazy val http4sVersion = "0.21.0"
 lazy val doobieVersion = "0.8.8"
 
 lazy val dbHost = sys.env.getOrElse("DB_HOST", "localhost")
@@ -55,6 +56,10 @@ lazy val drivenAdapters = (project in file("driven-adapters"))
       "org.tpolecat" %% "doobie-core" % doobieVersion,
       "org.tpolecat" %% "doobie-postgres"  % doobieVersion,
       "com.danielasfregola" %% "twitter4s" % "6.2",
+      "net.ruippeixotog" % "scala-scraper_2.13" % "2.2.0",
+      "org.http4s" %% "http4s-dsl" % http4sVersion,
+      "org.http4s" %% "http4s-blaze-server" % http4sVersion,
+      "org.http4s" %% "http4s-blaze-client" % http4sVersion,
     ),
     flywayUrl := s"jdbc:postgresql://${dbHost}:${dbPort}/dog_eared",
     flywayUser := dbUser,
@@ -72,7 +77,6 @@ lazy val app = (project in file("app"))
     name := "dog-eared-app",
     libraryDependencies ++= Seq(
       "is.cir" %% "ciris" % "1.0.4",
-      "com.softwaremill.macwire" % "macros_2.13" % "2.3.3",
     )
   )
   .dependsOn(useCases, drivenPorts, drivenAdapters)

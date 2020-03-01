@@ -28,8 +28,15 @@ case class KindleQuotePage(
 
 }
 
+sealed trait KindleQuotePageResolutionError
+case class InvalidRedirectorResponse(status: Int, headers: List[String]) extends KindleQuotePageResolutionError
+case class InvalidRedirectLocation(url: String) extends KindleQuotePageResolutionError
+case class UnintendedOriginalUrl(url: String) extends KindleQuotePageResolutionError
+case class InvalidAttributes(reasons: List[String]) extends KindleQuotePageResolutionError
+
 trait KindleQuotePages[F[_]] {
 
-  def resolveManyByURLs(urls: List[AmazonRedirectorURL]): F[Map[AmazonRedirectorURL, KindleQuotePage]]
+  def resolveManyByURLs(urls: List[AmazonRedirectorURL])
+    : F[Map[AmazonRedirectorURL, Either[KindleQuotePageResolutionError, KindleQuotePage]]]
 
 }

@@ -1,6 +1,10 @@
 package me.jooohn.dogeared.app
+import java.util.concurrent.TimeUnit
+
 import ciris._
 import cats.implicits._
+
+import scala.concurrent.duration.{Duration, FiniteDuration}
 
 case class DBConfig(
     host: String,
@@ -34,15 +38,29 @@ object TwitterConfig {
   ).parMapN(TwitterConfig.apply)
 }
 
+case class CrawlerConfig(
+    intervalDuration: FiniteDuration
+)
+object CrawlerConfig {
+  val configValue: ConfigValue[CrawlerConfig] = env("CRAWLER_INTERVAL_MILLI_SECONDS").default("1000").as[Int].map {
+    intervalMillis =>
+      CrawlerConfig(
+        intervalDuration = Duration(intervalMillis, TimeUnit.MILLISECONDS)
+      )
+  }
+}
+
 case class Config(
     db: DBConfig,
-    twitter: TwitterConfig
+    twitter: TwitterConfig,
+    crawler: CrawlerConfig,
 )
 object Config extends ConfigCompanion[Config] {
 
   val configValue: ConfigValue[Config] = (
     DBConfig.configValue,
-    TwitterConfig.configValue
+    TwitterConfig.configValue,
+    CrawlerConfig.configValue
   ).parMapN(Config.apply)
 
 }
