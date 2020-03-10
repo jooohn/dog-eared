@@ -3,12 +3,14 @@ package me.jooohn.dogeared.usecases
 import java.net.URL
 
 import cats.effect.IO
+import cats.implicits._
 import me.jooohn.dogeared.domain.{AmazonRedirectorURL, Tweet, TwitterUser}
 import me.jooohn.dogeared.drivenadapters.{
   InMemoryKindleQuotePages,
-  InMemoryTweets,
+  InMemoryTwitter,
   PGKindleBooks,
   PGKindleQuotedTweets,
+  PGProcessedTweets,
   PGTwitterUsers
 }
 import me.jooohn.dogeared.drivenports.KindleQuotePage
@@ -24,10 +26,15 @@ class ImportKindleBookQuotesSuite extends munit.FunSuite {
   }
 
   test("should save KindleQuotedTweets with quote data") {
-    val tweets =
-      new InMemoryTweets[IO](Tweet("123", testUser.id, testAmazonURL) :: Nil)
+    val twitter =
+      new InMemoryTwitter[IO](
+        tweets = Tweet("123", testUser.id, testAmazonURL) :: Nil,
+        twitterUsers = testUser :: Nil,
+      )
+    val processedTweets = new PGProcessedTweets[IO]
+
     val useCase = new ImportKindleBookQuotes[IO](
-      tweets = tweets,
+      twitter = twitter,
       kindleQuotePages = new InMemoryKindleQuotePages[IO](
         Map(
           testAmazonURL -> KindleQuotePage(
@@ -39,12 +46,14 @@ class ImportKindleBookQuotesSuite extends munit.FunSuite {
             quoteBody = "abc",
           )
         )),
+      twitterUsers = new PGTwitterUsers[IO],
       kindleQuotedTweets = new PGKindleQuotedTweets[IO],
       kindleBooks = new PGKindleBooks[IO],
+      processedTweets = processedTweets,
     )
     useCase(testUser.id).unsafeRunSync()
 
-    assertEquals(tweets.newTweets.isEmpty, true)
+    assertEquals(processedTweets.resolveByUserId(testUser.id).unsafeRunSync().map(_.latestProcessedTweetId), "123".some)
   }
 
 }

@@ -1,6 +1,6 @@
 package me.jooohn.dogeared.cli
 
-import cats.effect.{ContextShift, ExitCode, IO}
+import cats.effect.{ContextShift, ExitCode, IO, Timer}
 import cats.implicits._
 import com.monovore.decline.{Command, Opts}
 import me.jooohn.dogeared.app.ProductionApp
@@ -8,7 +8,7 @@ import me.jooohn.dogeared.domain.TwitterUserId
 
 package object command {
 
-  def importTweets(implicit CS: ContextShift[IO]): Command[IO[ExitCode]] =
+  def importTweets(implicit CS: ContextShift[IO], T: Timer[IO]): Command[IO[ExitCode]] =
     Command(
       name = "import-tweets",
       header = "Import tweets including Amazon kindle quotes"

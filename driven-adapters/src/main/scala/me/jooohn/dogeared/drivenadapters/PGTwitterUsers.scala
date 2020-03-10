@@ -5,11 +5,13 @@ import cats.effect.Bracket
 import cats.implicits._
 import doobie.implicits._
 import doobie.{Transactor, Update}
-import me.jooohn.dogeared.domain.TwitterUser
+import me.jooohn.dogeared.domain.{TwitterUser, TwitterUserId}
 import me.jooohn.dogeared.drivenadapters.instances.twitterUser._
 import me.jooohn.dogeared.drivenports.TwitterUsers
 
 class PGTwitterUsers[F[_]: Monad: Transactor: Bracket[*[_], Throwable]] extends TwitterUsers[F] {
+
+  val transactor: Transactor[F] = implicitly[Transactor[F]]
 
   override def storeMany(twitterUsers: List[TwitterUser]): F[Unit] = {
     val sql =
@@ -24,4 +26,16 @@ class PGTwitterUsers[F[_]: Monad: Transactor: Bracket[*[_], Throwable]] extends 
       .transact[F](implicitly[Transactor[F]]) *> Monad[F].unit
   }
 
+  override def resolve(id: TwitterUserId): F[Option[TwitterUser]] =
+    sql"""
+         |SELECT id, username
+         |FROM twitter_users
+         |WHERE id = ${id}
+         |""".stripMargin
+      .query[TwitterUser]
+      .option
+      .transact(transactor)
+
+  override def store(twitterUser: TwitterUser): F[Unit] =
+    storeMany(List(twitterUser))
 }

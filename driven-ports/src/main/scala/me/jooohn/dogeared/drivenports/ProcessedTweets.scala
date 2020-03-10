@@ -4,7 +4,7 @@ import me.jooohn.dogeared.domain.{TweetId, TwitterUserId}
 
 case class ProcessedTweet(
     twitterUserId: TwitterUserId,
-    lastProcessedTweetId: TweetId,
+    latestProcessedTweetId: TweetId,
 )
 
 trait ProcessedTweets[F[_]] {

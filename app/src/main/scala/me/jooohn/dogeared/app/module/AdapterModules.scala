@@ -28,7 +28,7 @@ trait ProductionAdapterModule {
     AccessToken(twitterConfig.accessTokenKey, twitterConfig.accessTokenSecret)
   )
 
-  lazy val tweets: Tweets[IO] = new Twitter4sTweets(
+  lazy val tweets: Twitter[IO] = new Twitter4STwitter(
     restClient = twitter4sRestClient,
     processedTweets = processedTweets,
   )

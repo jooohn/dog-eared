@@ -6,6 +6,6 @@ import me.jooohn.dogeared.drivenports.ProcessedTweet
 trait ProcessedTweetInstances {
 
   implicit val processedTweetWrite: Write[ProcessedTweet] =
-    Write[(String, String)].contramap(pt => (pt.twitterUserId, pt.lastProcessedTweetId))
+    Write[(String, String)].contramap(pt => (pt.twitterUserId, pt.latestProcessedTweetId))
 
 }
