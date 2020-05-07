@@ -38,4 +38,13 @@ class PGTwitterUsers[F[_]: Monad: Transactor: Bracket[*[_], Throwable]] extends 
 
   override def store(twitterUser: TwitterUser): F[Unit] =
     storeMany(List(twitterUser))
+
+  override def resolveAll: F[List[TwitterUser]] =
+    sql"""
+         |SELECT id, username
+         |FROM twitter_users
+         |""".stripMargin
+      .query[TwitterUser]
+      .to[List]
+      .transact(transactor)
 }

@@ -15,7 +15,7 @@ import me.jooohn.dogeared.drivenadapters.{
 }
 import me.jooohn.dogeared.drivenports.KindleQuotePage
 
-class ImportKindleBookQuotesSuite extends munit.FunSuite {
+class ImportKindleBookQuotesForUserSuite extends munit.FunSuite {
   import me.jooohn.dogeared._
 
   val testUser = TwitterUser("12345", "jooohn1234")
@@ -33,7 +33,7 @@ class ImportKindleBookQuotesSuite extends munit.FunSuite {
       )
     val processedTweets = new PGProcessedTweets[IO]
 
-    val useCase = new ImportKindleBookQuotes[IO](
+    val useCase = new ImportKindleBookQuotesForUser[IO](
       twitter = twitter,
       kindleQuotePages = new InMemoryKindleQuotePages[IO](
         Map(

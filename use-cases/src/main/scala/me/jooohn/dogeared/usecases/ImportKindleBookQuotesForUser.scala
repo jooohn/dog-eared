@@ -6,7 +6,7 @@ import cats.implicits._
 import me.jooohn.dogeared.domain._
 import me.jooohn.dogeared.drivenports._
 
-class ImportKindleBookQuotes[F[_]: Monad](
+class ImportKindleBookQuotesForUser[F[_]: Monad](
     twitter: Twitter[F],
     twitterUsers: TwitterUsers[F],
     processedTweets: ProcessedTweets[F],
@@ -14,7 +14,7 @@ class ImportKindleBookQuotes[F[_]: Monad](
     kindleQuotedTweets: KindleQuotedTweets[F],
     kindleBooks: KindleBooks[F]
 ) {
-  import ImportKindleBookQuotes._
+  import ImportKindleBookQuotesForUser._
 
   private type QuotePageForTweet = Map[TweetId, KindleQuotePage]
 
@@ -90,6 +90,6 @@ class ImportKindleBookQuotes[F[_]: Monad](
   }
 
 }
-object ImportKindleBookQuotes {
+object ImportKindleBookQuotesForUser {
   type Error = EnsureTwitterUserExistence.Error
 }

@@ -9,7 +9,7 @@ import me.jooohn.dogeared.drivenports.{
   Twitter,
   TwitterUsers
 }
-import me.jooohn.dogeared.usecases.ImportKindleBookQuotes
+import me.jooohn.dogeared.usecases.ImportKindleBookQuotesForUser
 
 trait UseCaseModules {
   val tweets: Twitter[IO]
@@ -19,7 +19,7 @@ trait UseCaseModules {
   val kindleBooks: KindleBooks[IO]
   val processedTweets: ProcessedTweets[IO]
 
-  lazy val importKindleBookQuotes: ImportKindleBookQuotes[IO] = new ImportKindleBookQuotes[IO](
+  lazy val importKindleBookQuotes: ImportKindleBookQuotesForUser[IO] = new ImportKindleBookQuotesForUser[IO](
     twitter = tweets,
     twitterUsers = twitterUsers,
     kindleQuotePages = kindleQuotePages,
