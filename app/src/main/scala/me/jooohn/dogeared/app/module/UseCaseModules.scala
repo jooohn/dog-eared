@@ -1,15 +1,8 @@
 package me.jooohn.dogeared.app.module
 
 import cats.effect.IO
-import me.jooohn.dogeared.drivenports.{
-  KindleBooks,
-  KindleQuotePages,
-  KindleQuotedTweets,
-  ProcessedTweets,
-  Twitter,
-  TwitterUsers
-}
-import me.jooohn.dogeared.usecases.ImportKindleBookQuotesForUser
+import me.jooohn.dogeared.drivenports._
+import me.jooohn.dogeared.usecases.{ImportKindleBookQuotesForAllUsers, ImportKindleBookQuotesForUser}
 
 trait UseCaseModules {
   val tweets: Twitter[IO]
@@ -19,7 +12,7 @@ trait UseCaseModules {
   val kindleBooks: KindleBooks[IO]
   val processedTweets: ProcessedTweets[IO]
 
-  lazy val importKindleBookQuotes: ImportKindleBookQuotesForUser[IO] = new ImportKindleBookQuotesForUser[IO](
+  lazy val importKindleBookQuotesForUser: ImportKindleBookQuotesForUser[IO] = new ImportKindleBookQuotesForUser[IO](
     twitter = tweets,
     twitterUsers = twitterUsers,
     kindleQuotePages = kindleQuotePages,
@@ -27,4 +20,10 @@ trait UseCaseModules {
     kindleBooks = kindleBooks,
     processedTweets = processedTweets,
   )
+
+  lazy val importKindleBookQuotesForAllUsers: ImportKindleBookQuotesForAllUsers[IO] =
+    new ImportKindleBookQuotesForAllUsers[IO](
+      importKindleBookQuotesForUser = importKindleBookQuotesForUser,
+      twitterUsers = twitterUsers,
+    )
 }

@@ -1,21 +1,20 @@
 package me.jooohn.dogeared.usecases
 
 import cats.Monad
-import cats.implicits._
 import cats.data.NonEmptyList
-import me.jooohn.dogeared.drivenports.{ConcurrentIO, TwitterUsers}
+import cats.implicits._
+import me.jooohn.dogeared.drivenports.TwitterUsers
 
 class ImportKindleBookQuotesForAllUsers[F[_]: Monad](
-    twitterUsers: TwitterUsers[F],
     importKindleBookQuotesForUser: ImportKindleBookQuotesForUser[F],
-    concurrentIO: ConcurrentIO[F]
+    twitterUsers: TwitterUsers[F]
 ) {
   import ImportKindleBookQuotesForAllUsers._
 
   def apply: F[Either[Error, Unit]] =
     for {
       users <- twitterUsers.resolveAll
-      results <- concurrentIO.all(users)(user => importKindleBookQuotesForUser(user.id))
+      results <- users.traverse(user => importKindleBookQuotesForUser(user.id))
     } yield gatherResults(results)
 
   private def gatherResults(results: List[Either[ImportKindleBookQuotesForUser.Error, Unit]]): Either[Error, Unit] =

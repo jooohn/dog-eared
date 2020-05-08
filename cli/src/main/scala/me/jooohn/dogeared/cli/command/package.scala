@@ -13,10 +13,15 @@ package object command {
       name = "import-tweets",
       header = "Import tweets including Amazon kindle quotes"
     ) {
-      Opts.argument[TwitterUserId]("twitter-user-id") map { twitterUserId =>
-        ProductionApp { container =>
-          container.importKindleBookQuotes(twitterUserId)
-        } as ExitCode.Success
+      Opts
+        .option[TwitterUserId](
+          "twitter-user-id",
+          "Target twitter-user-id to import tweets. If not specified, import tweets for all registered users.")
+        .orNone map {
+        case Some(twitterUserId) =>
+          ProductionApp(_.importKindleBookQuotesForUser(twitterUserId)) as ExitCode.Success
+        case None =>
+          ProductionApp(_.importKindleBookQuotesForAllUsers.apply) as ExitCode.Success
       }
     }
 }
