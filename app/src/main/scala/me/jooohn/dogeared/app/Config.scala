@@ -41,7 +41,7 @@ object TwitterConfig {
 case class CrawlerConfig(
     intervalDuration: FiniteDuration
 )
-object CrawlerConfig {
+object CrawlerConfig extends ConfigCompanion[CrawlerConfig] {
   val configValue: ConfigValue[CrawlerConfig] = env("CRAWLER_INTERVAL_MILLI_SECONDS").default("1000").as[Int].map {
     intervalMillis =>
       CrawlerConfig(
