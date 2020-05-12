@@ -1,7 +1,7 @@
 
-lazy val catsVersion = "2.1.0"
-lazy val http4sVersion = "0.21.0"
-lazy val doobieVersion = "0.8.8"
+lazy val catsVersion = "2.1.1"
+lazy val http4sVersion = "0.21.4"
+lazy val doobieVersion = "0.9.0"
 
 lazy val dbHost = sys.env.getOrElse("DB_HOST", "localhost")
 lazy val dbPort = sys.env.getOrElse("DB_PORT", "5432")
@@ -10,7 +10,7 @@ lazy val dbPassword = sys.env.getOrElse("DB_PASSWORD", "")
 
 lazy val commonSettings = Seq(
   version := "0.1",
-  scalaVersion := "2.13.1",
+  scalaVersion := "2.13.2",
   scalacOptions ++= Seq(
     "-language:higherKinds",
 //    "-Yimports:java.lang,scala,scala.Predef,cats.implicits"
@@ -20,6 +20,7 @@ lazy val commonSettings = Seq(
     "org.typelevel" %% "simulacrum" % "1.0.0",
   ),
   addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.11.0" cross CrossVersion.full),
+  test in assembly := {}
 )
 lazy val server = (project in file("server"))
   .settings(commonSettings)
@@ -60,6 +61,9 @@ lazy val drivenAdapters = (project in file("driven-adapters"))
       "org.http4s" %% "http4s-dsl" % http4sVersion,
       "org.http4s" %% "http4s-blaze-server" % http4sVersion,
       "org.http4s" %% "http4s-blaze-client" % http4sVersion,
+    ),
+    dependencyOverrides ++= Seq(
+      "org.typelevel" %% "cats-core" % catsVersion,
     ),
     flywayUrl := s"jdbc:postgresql://${dbHost}:${dbPort}/dog_eared",
     flywayUser := dbUser,
