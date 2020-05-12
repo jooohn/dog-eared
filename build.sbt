@@ -93,8 +93,12 @@ lazy val cli = (project in file("cli"))
       "com.monovore" %% "decline" % "1.0.0",
       "com.monovore" %% "decline-effect" % "1.0.0",
     ),
+    dockerBaseImage := "openjdk:13",
+    daemonUser in Docker := "dog-eared",
   )
   .dependsOn(app)
+  .enablePlugins(JavaAppPackaging)
+  .enablePlugins(DockerPlugin)
 
 lazy val tests = (project in file("tests"))
   .settings(commonSettings)
