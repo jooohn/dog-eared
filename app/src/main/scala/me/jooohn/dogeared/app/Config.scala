@@ -6,6 +6,25 @@ import cats.implicits._
 
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
+case class AWSConfig(
+    accessKeyId: String,
+    secretAccessKey: String,
+    defaultRegion: String,
+    dynamodbEndpoint: Option[String],
+    dynamodbUserShard: Int,
+    dynamodbBookShard: Int,
+)
+object AWSConfig extends ConfigCompanion[AWSConfig] {
+  val configValue: ConfigValue[AWSConfig] = (
+    env("AWS_ACCESS_KEY_ID"),
+    env("AWS_SECRET_ACCESS_KEY"),
+    env("AWS_REGION"),
+    env("AWS_DYNAMODB_ENDPOINT").option.default(None),
+    env("AWS_DYNAMODB_USER_SHARD").map(_.toInt).default(1),
+    env("AWS_DYNAMODB_BOOK_SHARD").map(_.toInt).default(1),
+  ).parMapN(AWSConfig.apply)
+}
+
 case class DBConfig(
     host: String,
     port: Int,
@@ -51,6 +70,7 @@ object CrawlerConfig extends ConfigCompanion[CrawlerConfig] {
 }
 
 case class Config(
+    aws: AWSConfig,
     db: DBConfig,
     twitter: TwitterConfig,
     crawler: CrawlerConfig,
@@ -58,6 +78,7 @@ case class Config(
 object Config extends ConfigCompanion[Config] {
 
   val configValue: ConfigValue[Config] = (
+    AWSConfig.configValue,
     DBConfig.configValue,
     TwitterConfig.configValue,
     CrawlerConfig.configValue

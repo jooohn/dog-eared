@@ -11,6 +11,6 @@ trait ProcessedTweets[F[_]] {
 
   def resolveByUserId(twitterUserId: TwitterUserId): F[Option[ProcessedTweet]]
 
-  def recordLastProcessedTweetId(twitterUserId: TwitterUserId, tweetId: TweetId): F[Unit]
+  def recordLatestProcessedTweetId(twitterUserId: TwitterUserId, tweetId: TweetId): F[Unit]
 
 }

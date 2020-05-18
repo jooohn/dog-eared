@@ -3,7 +3,7 @@ package me.jooohn
 import cats.effect.{Blocker, ContextShift, IO}
 import doobie.util.ExecutionContexts
 import doobie.util.transactor.Transactor
-import me.jooohn.dogeared.app.{Config, CrawlerConfig, DBConfig, TwitterConfig}
+import me.jooohn.dogeared.app.{AWSConfig, Config, CrawlerConfig, DBConfig, TwitterConfig}
 
 package object dogeared {
 
@@ -17,6 +17,7 @@ package object dogeared {
       accessTokenKey = "dummy",
       accessTokenSecret = "dummy",
     ),
+    aws = AWSConfig.load[IO].unsafeRunSync(),
     crawler = CrawlerConfig.load[IO].unsafeRunSync()
   )
 

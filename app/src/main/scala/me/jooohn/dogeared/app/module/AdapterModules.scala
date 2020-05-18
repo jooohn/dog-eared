@@ -2,19 +2,31 @@ package me.jooohn.dogeared.app.module
 
 import akka.actor.ActorSystem
 import cats.effect.{ContextShift, IO, Timer}
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsync
 import com.danielasfregola.twitter4s.TwitterRestClient
 import com.danielasfregola.twitter4s.entities.{AccessToken, ConsumerToken}
 import doobie.util.transactor.Transactor
-import me.jooohn.dogeared.app.{CrawlerConfig, TwitterConfig}
+import io.chrisdavenport.log4cats.Logger
+import io.chrisdavenport.log4cats.slf4j.Slf4jLogger
+import me.jooohn.dogeared.app.{AWSConfig, CrawlerConfig, TwitterConfig}
 import me.jooohn.dogeared.drivenadapters._
+import me.jooohn.dogeared.drivenadapters.dynamodb.{
+  DynamoKindleBooks,
+  DynamoKindleQuotedTweets,
+  DynamoProcessedTweets,
+  DynamoTwitterUsers
+}
 import me.jooohn.dogeared.drivenports._
 import org.http4s.client.Client
+import org.scanamo.ScanamoCats
 
 trait ProductionAdapterModule {
 
   val twitterConfig: TwitterConfig
   val crawlerConfig: CrawlerConfig
   val ioHttp4sClient: Client[IO]
+  val awsConfig: AWSConfig
+  val amazonDynamoDB: AmazonDynamoDBAsync
   val twitterClientConcurrentIO: ConcurrentIO[IO]
 
   implicit val ioTimer: Timer[IO]
@@ -22,10 +34,13 @@ trait ProductionAdapterModule {
   implicit val transactor: Transactor.Aux[IO, Unit]
   implicit val actorSystem: ActorSystem
 
-  lazy val kindleQuotedTweets: KindleQuotedTweets[IO] = new PGKindleQuotedTweets[IO]
-  lazy val kindleBooks: KindleBooks[IO] = new PGKindleBooks[IO]
-  lazy val processedTweets: ProcessedTweets[IO] = new PGProcessedTweets[IO]
-  lazy val twitterUsers: TwitterUsers[IO] = new PGTwitterUsers[IO]
+  lazy val logger: Logger[IO] = Slf4jLogger.getLogger[IO]
+  lazy val scanamo: ScanamoCats[IO] = ScanamoCats(amazonDynamoDB)
+  lazy val kindleQuotedTweets: KindleQuotedTweets[IO] = new DynamoKindleQuotedTweets(scanamo, logger)
+  lazy val kindleBooks: KindleBooks[IO] = new DynamoKindleBooks(scanamo, logger, awsConfig.dynamodbBookShard)
+  lazy val processedTweets: ProcessedTweets[IO] =
+    new DynamoProcessedTweets(scanamo, logger, awsConfig.dynamodbUserShard)
+  lazy val twitterUsers: TwitterUsers[IO] = new DynamoTwitterUsers(scanamo, logger, awsConfig.dynamodbUserShard)
 
   lazy val twitter4sRestClient: TwitterRestClient = TwitterRestClient.withActorSystem(
     ConsumerToken(twitterConfig.consumerTokenKey, twitterConfig.consumerTokenSecret),

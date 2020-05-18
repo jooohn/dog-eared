@@ -10,6 +10,6 @@ trait TwitterUsers[F[_]] {
 
   def store(twitterUser: TwitterUser): F[Unit]
 
-  def storeMany(twitterUser: List[TwitterUser]): F[Unit]
+  def storeMany(twitterUsers: List[TwitterUser]): F[Unit]
 
 }

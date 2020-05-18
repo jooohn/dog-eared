@@ -7,3 +7,10 @@ services:
     volumes:
       - ./pg-data:/var/lib/postgresql/data
       - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+  dynamodb:
+    image: amazon/dynamodb-local
+    command: ['-jar', 'DynamoDBLocal.jar', '-sharedDb', '-dbPath', './dynamodb-data']
+    ports:
+      - '8000:8000'
+    volumes:
+      - ./dynamodb-data:/home/dynamodblocal/dynamodb-data

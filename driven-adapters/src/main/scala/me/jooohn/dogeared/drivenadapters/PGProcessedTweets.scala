@@ -22,7 +22,7 @@ class PGProcessedTweets[F[_]: Monad: Transactor: Bracket[*[_], Throwable]] exten
       .option
       .transact[F](transactor)
 
-  override def recordLastProcessedTweetId(twitterUserId: TwitterUserId, tweetId: TweetId): F[Unit] =
+  override def recordLatestProcessedTweetId(twitterUserId: TwitterUserId, tweetId: TweetId): F[Unit] =
     sql"""
          |INSERT INTO processed_tweets
          |(twitter_user_id, last_processed_tweet_id)

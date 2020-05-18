@@ -35,7 +35,7 @@ class ImportKindleBookQuotesForUser[F[_]: Monad](
       newTweets <- twitter.findUserTweets(twitterUserId, processedTweet.map(_.latestProcessedTweetId))
       _ <- f(newTweets)
       _ <- newTweets.headOption.fold(Monad[F].unit)(latestTweet =>
-        processedTweets.recordLastProcessedTweetId(twitterUserId, latestTweet.id))
+        processedTweets.recordLatestProcessedTweetId(twitterUserId, latestTweet.id))
     } yield ()
 
   private def importKindleBookQuotesFromTweets(tweets: List[Tweet]): F[Unit] = {

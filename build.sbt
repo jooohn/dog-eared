@@ -58,9 +58,14 @@ lazy val drivenAdapters = (project in file("driven-adapters"))
       "org.tpolecat" %% "doobie-postgres"  % doobieVersion,
       "com.danielasfregola" %% "twitter4s" % "6.2",
       "net.ruippeixotog" % "scala-scraper_2.13" % "2.2.0",
+      "org.scanamo" %% "scanamo" % "1.0.0-M12-1",
+      "org.scanamo" %% "scanamo-cats-effect" % "1.0.0-M12-1",
       "org.http4s" %% "http4s-dsl" % http4sVersion,
       "org.http4s" %% "http4s-blaze-server" % http4sVersion,
       "org.http4s" %% "http4s-blaze-client" % http4sVersion,
+      "io.chrisdavenport" %% "log4cats-slf4j" % "1.1.1",
+      "ch.qos.logback" % "logback-classic" % "1.2.3",
+
     ),
     dependencyOverrides ++= Seq(
       "org.typelevel" %% "cats-core" % catsVersion,
@@ -93,12 +98,8 @@ lazy val cli = (project in file("cli"))
       "com.monovore" %% "decline" % "1.0.0",
       "com.monovore" %% "decline-effect" % "1.0.0",
     ),
-    dockerBaseImage := "openjdk:13",
-    daemonUser in Docker := "dog-eared",
   )
   .dependsOn(app)
-  .enablePlugins(JavaAppPackaging)
-  .enablePlugins(DockerPlugin)
 
 lazy val tests = (project in file("tests"))
   .settings(commonSettings)
