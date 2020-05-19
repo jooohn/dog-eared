@@ -40,9 +40,8 @@ jobs:
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v1
         with:
-          # since the aws cli is used only for creating local dynamodb tables, we don't need real access key id / secret.
-          aws-access-key-id: dummy
-          aws-secret-access-key: dummy
+          aws-access-key-id: ${{ secrets.DUMMY_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.DUMMY_AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-northeast-1
       - name: Create dynamodb tables
         run: ./misc/dev/create-dynamodb-tables.sh
