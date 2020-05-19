@@ -25,7 +25,10 @@ object DynamoTwitterUser {
 
   def primaryKey(twitterUserId: TwitterUserId): String = s"TWITTER_USER#${twitterUserId}"
   def sortKey(twitterUserId: TwitterUserId, shardSize: Int): String =
-    s"TWITTER_USER#${Shard.determine(twitterUserId, shardSize)}"
+    sortKeyForShard(Shard.determine(twitterUserId, shardSize))
+
+  def sortKeyForShard(shardId: Int): String =
+    s"TWITTER_USER#${shardId}"
 
   def from(twitterUser: TwitterUser, shardSize: Int): DynamoTwitterUser = DynamoTwitterUser(
     primaryKey = primaryKey(twitterUser.id),
@@ -53,7 +56,7 @@ class DynamoTwitterUsers(scanamo: ScanamoCats[IO], logger: Logger[IO], shardSize
         .parTraverse(
           shard =>
             scanamo
-              .exec(table.filter("sortKey" -> s"TWITTER_USER#${shard}").scan())
+              .exec(table.filter("sortKey" -> DynamoTwitterUser.sortKeyForShard(shard)).scan())
               .raiseIfError
               .map(_.map(_.toTwitterUser)))
         .map(_.flatten)

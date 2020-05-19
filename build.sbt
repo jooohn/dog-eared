@@ -106,7 +106,8 @@ lazy val tests = (project in file("tests"))
   .settings(
     name := "dog-eared-tests",
     libraryDependencies ++= Seq(
-      "org.scalameta" %% "munit" % "0.4.5"
+      "org.scalameta" %% "munit" % "0.4.5" % Test,
+      "org.scalameta" %% "munit-scalacheck" % "0.7.7" % Test
     ),
     testFrameworks += new TestFramework("munit.Framework")
   )
