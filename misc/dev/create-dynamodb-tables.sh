@@ -1,7 +1,7 @@
 #!/bin/bash
 
 aws dynamodb create-table \
-  --endpoint-url ${AWS_DYNAMODB_ENDPOINT} \
+  --endpoint-url "${AWS_DYNAMODB_ENDPOINT}" \
   --table-name dog-eared-main \
   --attribute-definitions AttributeName=primaryKey,AttributeType=S AttributeName=sortKey,AttributeType=S AttributeName=data,AttributeType=S \
   --key-schema AttributeName=primaryKey,KeyType=HASH AttributeName=sortKey,KeyType=RANGE \
