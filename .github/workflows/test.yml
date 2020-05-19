@@ -20,6 +20,7 @@ jobs:
         image: amazon/dynamodb-local:latest
         ports:
           - 8000/tcp
+        options: --health-cmd "curl --fail http://localhost:8000/shell" --health-interval 10s
 
     steps:
       - uses: actions/checkout@v2
@@ -51,7 +52,7 @@ jobs:
         run: sbt 'project drivenAdapters' 'Test / flywayMigrate' 'project tests' test
         env:
           DB_PORT: ${{ job.services.postgres.ports[5432] }}
-          AWS_ACCESS_KEY_ID: dummy
-          AWS_SECRET_ACCESS_KEY: dummy
+          AWS_ACCESS_KEY_ID: ${{ secrets.DUMMY_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.DUMMY_AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ap-northeast-1
           AWS_DYNAMODB_ENDPOINT: http://localhost:${{ job.services.dynamodb.ports[8000] }}
