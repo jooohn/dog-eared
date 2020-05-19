@@ -37,6 +37,14 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: 13
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: ap-northeast-1
+      - name: Create dynamodb tables
+        run: ./misc/dev/create-dynamodb-tables.sh
+        env:
+          AWS_DYNAMODB_ENDPOINT: http://localhost:${{ job.services.dynamodb.ports[8000] }}
       - name: Run tests
         run: sbt 'project drivenAdapters' 'Test / flywayMigrate' 'project tests' test
         env:
