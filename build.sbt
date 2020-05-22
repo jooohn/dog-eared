@@ -1,3 +1,4 @@
+import com.amazonaws.regions.{Region, Regions}
 
 lazy val catsVersion = "2.1.1"
 lazy val http4sVersion = "0.21.4"
@@ -27,7 +28,7 @@ lazy val server = (project in file("server"))
   .settings(
     name := "dog-eared-server",
   )
-  .dependsOn(useCases, drivenAdapters)
+  .dependsOn(app, useCases, drivenAdapters)
 
 lazy val domain = (project in file("domain"))
   .settings(commonSettings)
@@ -91,6 +92,7 @@ lazy val app = (project in file("app"))
   .dependsOn(useCases, drivenPorts, drivenAdapters)
 
 lazy val cli = (project in file("cli"))
+  .enablePlugins(JavaAppPackaging, DockerPlugin, EcrPlugin)
   .settings(commonSettings)
   .settings(
     name := "dog-eared-cli",
@@ -98,6 +100,15 @@ lazy val cli = (project in file("cli"))
       "com.monovore" %% "decline" % "1.0.0",
       "com.monovore" %% "decline-effect" % "1.0.0",
     ),
+    dockerBaseImage := "openjdk:11",
+    packageName in Docker := "dog-eared-cli",
+    daemonUser in Docker := "dog-eared",
+    dockerUpdateLatest := true,
+    region in Ecr := Region.getRegion(Regions.AP_NORTHEAST_1),
+    repositoryName in Ecr := (packageName in Docker).value,
+    repositoryTags in Ecr ++= Seq(version.value),
+    localDockerImage in Ecr := (packageName in Docker).value + ":" + (version in Docker).value,
+    push in Ecr := ((push in Ecr) dependsOn (publishLocal in Docker, login in Ecr)).value,
   )
   .dependsOn(app)
 
