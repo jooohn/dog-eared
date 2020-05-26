@@ -7,8 +7,6 @@ import cats.implicits._
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
 case class AWSConfig(
-    accessKeyId: String,
-    secretAccessKey: String,
     defaultRegion: String,
     dynamodbEndpoint: Option[String],
     dynamodbUserShard: Int,
@@ -16,8 +14,6 @@ case class AWSConfig(
 )
 object AWSConfig extends ConfigCompanion[AWSConfig] {
   val configValue: ConfigValue[AWSConfig] = (
-    env("AWS_ACCESS_KEY_ID"),
-    env("AWS_SECRET_ACCESS_KEY"),
     env("AWS_REGION"),
     env("AWS_DYNAMODB_ENDPOINT").option.default(None),
     env("AWS_DYNAMODB_USER_SHARD").map(_.toInt).default(1),

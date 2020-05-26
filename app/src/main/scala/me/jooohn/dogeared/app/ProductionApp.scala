@@ -53,11 +53,6 @@ object ProductionApp {
           IO(
             AmazonDynamoDBAsyncClientBuilder
               .standard()
-              .withCredentials(
-                new AWSStaticCredentialsProvider(new BasicAWSCredentials(
-                  config.aws.accessKeyId,
-                  config.aws.secretAccessKey,
-                )))
               .let(
                 builder =>
                   config.aws.dynamodbEndpoint.fold(builder.withRegion(config.aws.defaultRegion))(
