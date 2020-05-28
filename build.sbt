@@ -66,6 +66,7 @@ lazy val drivenAdapters = (project in file("driven-adapters"))
       "org.http4s" %% "http4s-blaze-client" % http4sVersion,
       "io.chrisdavenport" %% "log4cats-slf4j" % "1.1.1",
       "ch.qos.logback" % "logback-classic" % "1.2.3",
+      "net.logstash.logback" % "logstash-logback-encoder" % "6.3",
 
     ),
     dependencyOverrides ++= Seq(
