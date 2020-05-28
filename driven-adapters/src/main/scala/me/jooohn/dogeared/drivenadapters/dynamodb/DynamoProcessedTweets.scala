@@ -33,7 +33,7 @@ object DynamoProcessedTweet {
 }
 
 class DynamoProcessedTweets(scanamo: ScanamoCats[IO], logger: Logger[IO], shardSize: Int) extends ProcessedTweets[IO] {
-  val table: Table[DynamoProcessedTweet] = Table[DynamoProcessedTweet]("dog-eared-users")
+  val table: Table[DynamoProcessedTweet] = Table[DynamoProcessedTweet]("dog-eared-main")
 
   override def resolveByUserId(twitterUserId: TwitterUserId): IO[Option[ProcessedTweet]] =
     logger.info(s"resolving processed tweets for twitter user ${twitterUserId}") *> scanamo

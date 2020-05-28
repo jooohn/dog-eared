@@ -28,7 +28,7 @@ object DynamoKindleBook {
 }
 
 class DynamoKindleBooks(scanamo: ScanamoCats[IO], logger: Logger[IO], shardSize: Int) extends KindleBooks[IO] {
-  val table: Table[DynamoKindleBook] = Table("dog-eared-books")
+  val table: Table[DynamoKindleBook] = Table("dog-eared-main")
 
   override def storeMany(kindleBooks: List[KindleBook]): IO[Unit] =
     for {

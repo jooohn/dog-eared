@@ -27,7 +27,7 @@ object DynamoKindleQuotedTweet {
 }
 
 class DynamoKindleQuotedTweets(scanamo: ScanamoCats[IO], logger: Logger[IO]) extends KindleQuotedTweets[IO] {
-  val table: Table[DynamoKindleQuotedTweet] = Table[DynamoKindleQuotedTweet]("dog-eared-users")
+  val table: Table[DynamoKindleQuotedTweet] = Table[DynamoKindleQuotedTweet]("dog-eared-main")
 
   override def storeMany(kindleQuotedTweets: List[KindleQuotedTweet]): IO[Unit] =
     for {
