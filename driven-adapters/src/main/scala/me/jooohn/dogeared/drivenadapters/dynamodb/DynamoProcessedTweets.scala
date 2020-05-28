@@ -24,10 +24,15 @@ case class DynamoProcessedTweet(
 }
 
 object DynamoProcessedTweet {
-  def from(twitterUserId: String, latestProcessedTweetId: String, shardSize: Int): DynamoProcessedTweet =
+
+  def primaryKey(twitterUserId: TwitterUserId): String = s"TWITTER_USER#${twitterUserId}"
+  def sortKey(twitterUserId: TwitterUserId, shardSize: Int): String =
+    s"PROCESSED_TWEET#${Shard.determine(twitterUserId, shardSize)}"
+
+  def from(twitterUserId: TwitterUserId, latestProcessedTweetId: TweetId, shardSize: Int): DynamoProcessedTweet =
     DynamoProcessedTweet(
-      primaryKey = s"TWITTER_USER#${twitterUserId}",
-      sortKey = s"PROCESSED_TWEET#${Shard.determine(twitterUserId, shardSize)}",
+      primaryKey = primaryKey(twitterUserId),
+      sortKey = sortKey(twitterUserId, shardSize),
       data = latestProcessedTweetId,
     )
 }
@@ -37,9 +42,10 @@ class DynamoProcessedTweets(scanamo: ScanamoCats[IO], logger: Logger[IO], shardS
 
   override def resolveByUserId(twitterUserId: TwitterUserId): IO[Option[ProcessedTweet]] =
     logger.info(s"resolving processed tweets for twitter user ${twitterUserId}") *> scanamo
-      .exec(table.get("twitterUserId" -> twitterUserId and "type" -> "PROCESSED_TWEETS"))
+      .exec(table.get("primaryKey" -> DynamoProcessedTweet
+        .primaryKey(twitterUserId) and "sortKey" -> DynamoProcessedTweet.sortKey(twitterUserId, shardSize)))
       .raiseIfError
-      .map(_.map(_.toProcessedTweet))
+      .map(_.map(_.toProcessedTweet)) <* logger.info(s"resolved")
 
   override def recordLatestProcessedTweetId(twitterUserId: TwitterUserId, tweetId: TweetId): IO[Unit] =
     logger.info(s"recording ${tweetId} as the latest processed tweet for twitter user ${twitterUserId}") *> scanamo
