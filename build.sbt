@@ -1,5 +1,7 @@
 import com.amazonaws.regions.{Region, Regions}
 
+lazy val appName = "dog-eared"
+
 lazy val catsVersion = "2.1.1"
 lazy val http4sVersion = "0.21.4"
 lazy val doobieVersion = "0.9.0"
@@ -8,6 +10,11 @@ lazy val dbHost = sys.env.getOrElse("DB_HOST", "localhost")
 lazy val dbPort = sys.env.getOrElse("DB_PORT", "5432")
 lazy val dbUser = sys.env.getOrElse("DB_USER", "postgres")
 lazy val dbPassword = sys.env.getOrElse("DB_PASSWORD", "")
+
+lazy val loggingDependencies = Seq(
+  "ch.qos.logback" % "logback-classic" % "1.2.3",
+  "net.logstash.logback" % "logstash-logback-encoder" % "6.3",
+)
 
 lazy val commonSettings = Seq(
   version := "0.1",
@@ -24,36 +31,51 @@ lazy val commonSettings = Seq(
   test in assembly := {}
 )
 lazy val server = (project in file("server"))
+  .enablePlugins(S3Plugin)
   .settings(commonSettings)
   .settings(
-    name := "dog-eared-server",
+    name := s"${appName}-server",
+    libraryDependencies ++= Seq(
+      "com.amazonaws" % "aws-lambda-java-core" % "1.2.1",
+      "com.amazonaws" % "aws-lambda-java-events" % "3.1.0",
+      "com.amazonaws" % "aws-lambda-java-log4j2" % "1.2.0" % "runtime",
+    ) ++ loggingDependencies,
+    assemblyMergeStrategy in assembly := {
+      case PathList("META-INF", xs @ _*) => MergeStrategy.discard
+      case x => MergeStrategy.first
+    },
+    mappings in s3Upload := Seq(
+      (assemblyOutputPath in assembly).value -> s"${appName}/server.jar"
+    ),
+    s3Host in s3Upload := sys.env.getOrElse("LAMBDA_S3_HOST", "lambda-functions.jooohn.me.s3-website-ap-northeast-1.amazonaws.com"),
+    s3Upload := (s3Upload dependsOn assembly).value,
   )
   .dependsOn(app, useCases, drivenAdapters)
 
 lazy val domain = (project in file("domain"))
   .settings(commonSettings)
   .settings(
-    name := "dog-eared-domain"
+    name := s"${appName}-domain"
   )
 
 lazy val useCases = (project in file("use-cases"))
   .settings(commonSettings)
   .settings(
-    name := "dog-eared-use-cases"
+    name := s"${appName}-use-cases"
   )
   .dependsOn(domain, drivenPorts)
 
 lazy val drivenPorts = (project in file("driven-ports"))
   .settings(commonSettings)
   .settings(
-    name := "dog-eared-driven-ports"
+    name := s"${appName}-driven-ports"
   )
   .dependsOn(domain)
 
 lazy val drivenAdapters = (project in file("driven-adapters"))
   .settings(commonSettings)
   .settings(
-    name := "dog-eared-driven-adapters",
+    name := s"${appName}-driven-adapters",
     libraryDependencies ++= Seq(
       "org.tpolecat" %% "doobie-core" % doobieVersion,
       "org.tpolecat" %% "doobie-postgres"  % doobieVersion,
@@ -65,9 +87,6 @@ lazy val drivenAdapters = (project in file("driven-adapters"))
       "org.http4s" %% "http4s-blaze-server" % http4sVersion,
       "org.http4s" %% "http4s-blaze-client" % http4sVersion,
       "io.chrisdavenport" %% "log4cats-slf4j" % "1.1.1",
-      "ch.qos.logback" % "logback-classic" % "1.2.3",
-      "net.logstash.logback" % "logstash-logback-encoder" % "6.3",
-
     ),
     dependencyOverrides ++= Seq(
       "org.typelevel" %% "cats-core" % catsVersion,
@@ -85,7 +104,7 @@ lazy val drivenAdapters = (project in file("driven-adapters"))
 lazy val app = (project in file("app"))
   .settings(commonSettings)
   .settings(
-    name := "dog-eared-app",
+    name := s"${appName}-app",
     libraryDependencies ++= Seq(
       "is.cir" %% "ciris" % "1.0.4",
     )
@@ -96,14 +115,14 @@ lazy val cli = (project in file("cli"))
   .enablePlugins(JavaAppPackaging, DockerPlugin, EcrPlugin)
   .settings(commonSettings)
   .settings(
-    name := "dog-eared-cli",
+    name := s"${appName}-cli",
     libraryDependencies ++= Seq(
       "com.monovore" %% "decline" % "1.0.0",
       "com.monovore" %% "decline-effect" % "1.0.0",
-    ),
+    ) ++ loggingDependencies,
     dockerBaseImage := "openjdk:11",
-    packageName in Docker := "dog-eared-cli",
-    daemonUser in Docker := "dog-eared",
+    packageName in Docker := s"${appName}-cli",
+    daemonUser in Docker := s"${appName}",
     dockerUpdateLatest := true,
     region in Ecr := Region.getRegion(Regions.AP_NORTHEAST_1),
     repositoryName in Ecr := (packageName in Docker).value,
@@ -116,7 +135,7 @@ lazy val cli = (project in file("cli"))
 lazy val tests = (project in file("tests"))
   .settings(commonSettings)
   .settings(
-    name := "dog-eared-tests",
+    name := s"${appName}-tests",
     libraryDependencies ++= Seq(
       "org.scalameta" %% "munit" % "0.4.5" % Test,
       "org.scalameta" %% "munit-scalacheck" % "0.7.7" % Test

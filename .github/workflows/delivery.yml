@@ -56,8 +56,8 @@ jobs:
         env:
           DB_PORT: ${{ job.services.postgres.ports[5432] }}
           AWS_DYNAMODB_ENDPOINT: http://localhost:${{ job.services.dynamodb.ports[8000] }}
-  push-cli-image:
-    name: Deploy CLI image
+  deploy:
+    name: Deploy server.jar and CLI image
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/chore/ci-deploy'
     needs:
@@ -79,4 +79,4 @@ jobs:
         with:
           java-version: 13
       - name: Deploy CLI container image
-        run: sbt cli/ecr:push
+        run: sbt server/s3Upload cli/ecr:push
