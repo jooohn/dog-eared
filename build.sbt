@@ -1,4 +1,8 @@
+import java.io.FileOutputStream
+import java.nio.file.Files
+
 import com.amazonaws.regions.{Region, Regions}
+import org.apache.commons.compress.archivers.zip.{ZipArchiveEntry, ZipArchiveOutputStream}
 
 lazy val appName = "dog-eared"
 
@@ -6,22 +10,42 @@ lazy val catsVersion = "2.1.1"
 lazy val http4sVersion = "0.21.4"
 lazy val doobieVersion = "0.9.0"
 
+lazy val circeVersion = "0.12.3"
+lazy val circeDependencies = Seq(
+  "io.circe" %% "circe-core",
+  "io.circe" %% "circe-generic",
+  "io.circe" %% "circe-parser",
+).map(_ % circeVersion)
+
 lazy val dbHost = sys.env.getOrElse("DB_HOST", "localhost")
 lazy val dbPort = sys.env.getOrElse("DB_PORT", "5432")
 lazy val dbUser = sys.env.getOrElse("DB_USER", "postgres")
 lazy val dbPassword = sys.env.getOrElse("DB_PASSWORD", "")
+
+val extraGraalvmNativeImageOptions = Seq(
+  "-H:+ReportExceptionStackTraces",
+  "-H:+TraceClassInitialization",
+  "--verbose",
+  "--report-unsupported-elements-at-runtime",
+  "--initialize-at-build-time",
+  "--allow-incomplete-classpath",
+  "--no-fallback",
+)
 
 lazy val loggingDependencies = Seq(
   "ch.qos.logback" % "logback-classic" % "1.2.3",
   "net.logstash.logback" % "logstash-logback-encoder" % "6.3",
 )
 
+val lambdaRuntimeTargetZip = taskKey[File]("lambda runtime zip")
+val lambdaRuntime = taskKey[File]("create lambda runtime zip")
+
 lazy val commonSettings = Seq(
   version := "0.1",
   scalaVersion := "2.13.2",
   scalacOptions ++= Seq(
     "-language:higherKinds",
-//    "-Yimports:java.lang,scala,scala.Predef,cats.implicits"
+    //    "-Yimports:java.lang,scala,scala.Predef,cats.implicits"
   ),
   libraryDependencies ++= Seq(
     "org.typelevel" %% "cats-core" % catsVersion,
@@ -30,25 +54,46 @@ lazy val commonSettings = Seq(
   addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.11.0" cross CrossVersion.full),
   test in assembly := {}
 )
+
 lazy val server = (project in file("server"))
-  .enablePlugins(S3Plugin)
+  .enablePlugins(S3Plugin, GraalVMNativeImagePlugin)
   .settings(commonSettings)
   .settings(
     name := s"${appName}-server",
-    libraryDependencies ++= Seq(
+    libraryDependencies ++= circeDependencies ++ Seq(
       "com.amazonaws" % "aws-lambda-java-core" % "1.2.1",
       "com.amazonaws" % "aws-lambda-java-events" % "3.1.0",
       "com.amazonaws" % "aws-lambda-java-log4j2" % "1.2.0" % "runtime",
     ) ++ loggingDependencies,
-    assemblyMergeStrategy in assembly := {
-      case PathList("META-INF", xs @ _*) => MergeStrategy.discard
-      case x => MergeStrategy.first
+//    assemblyMergeStrategy in assembly := {
+//      case PathList("META-INF", xs @ _*) => MergeStrategy.discard
+//      case x => MergeStrategy.first
+//    },
+    name in GraalVMNativeImage := "bootstrap",
+    graalVMNativeImageOptions ++= extraGraalvmNativeImageOptions,
+    lambdaRuntimeTargetZip := {
+      val targetDirectory = target.value / "lambda-runtime"
+      targetDirectory.mkdirs()
+      targetDirectory / "runtime.zip"
     },
-    mappings in s3Upload := Seq(
-      (assemblyOutputPath in assembly).value -> s"${appName}/server.jar"
-    ),
+    lambdaRuntime := {
+      val source = (target in GraalVMNativeImage).value / (name in GraalVMNativeImage).value
+      val targetFile = lambdaRuntimeTargetZip.value
+      val out = new ZipArchiveOutputStream(new FileOutputStream(targetFile))
+      val entry = new ZipArchiveEntry("bootstrap")
+      entry.setUnixMode(0x1ed)
+      out.putArchiveEntry(entry)
+      Files.copy(source.toPath, out)
+      out.closeArchiveEntry()
+      out.close()
+      targetFile
+    },
+    lambdaRuntime := (lambdaRuntime dependsOn (packageBin in GraalVMNativeImage)).value,
     s3Host in s3Upload := sys.env.getOrElse("LAMBDA_S3_HOST", "lambda-functions.jooohn.me.s3-website-ap-northeast-1.amazonaws.com"),
-    s3Upload := (s3Upload dependsOn assembly).value,
+    s3Upload := (s3Upload dependsOn lambdaRuntime).value,
+    mappings in s3Upload := Seq(
+      lambdaRuntimeTargetZip.value -> s"${appName}/server-runtime"
+    ),
   )
   .dependsOn(app, useCases, drivenAdapters)
 
@@ -86,6 +131,7 @@ lazy val drivenAdapters = (project in file("driven-adapters"))
       "org.http4s" %% "http4s-dsl" % http4sVersion,
       "org.http4s" %% "http4s-blaze-server" % http4sVersion,
       "org.http4s" %% "http4s-blaze-client" % http4sVersion,
+      "org.http4s" %% "http4s-circe" % http4sVersion,
       "io.chrisdavenport" %% "log4cats-slf4j" % "1.1.1",
     ),
     dependencyOverrides ++= Seq(
