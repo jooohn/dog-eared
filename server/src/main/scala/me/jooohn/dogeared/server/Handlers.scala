@@ -1,17 +1,20 @@
 package me.jooohn.dogeared.server
 
-import com.amazonaws.services.lambda.runtime.Context
-import com.amazonaws.services.lambda.runtime.events.{APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent}
+import cats.effect.IO
+import io.circe.Json
+import me.jooohn.dogeared.server.LambdaRuntimeAPI.InvocationSuccess
 
-class Handlers {
+object Handlers {
 
-  def graphql(event: APIGatewayProxyRequestEvent, context: Context): APIGatewayProxyResponseEvent = {
-    context.getLogger.log("test")
-    println("test stdin")
-    val response = new APIGatewayProxyResponseEvent()
-    response.setStatusCode(200)
-    response.withBody(event.getBody)
-    response
+  val server: Handler = invocation =>
+    IO {
+      println(invocation)
+      InvocationSuccess(Json.fromString(invocation.toString))
   }
 
+  private[this] val map = Map[String, Handler](
+    "server" -> server,
+  )
+
+  def apply(name: String): Option[Handler] = map.get(name)
 }

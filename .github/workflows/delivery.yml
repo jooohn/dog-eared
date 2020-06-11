@@ -40,7 +40,7 @@ jobs:
       - name: Set up JDK
         uses: actions/setup-java@v1
         with:
-          java-version: 13
+          java-version: 11
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -74,9 +74,15 @@ jobs:
         with:
           path: ~/.ivy2
           key: ${{ runner.os }}-ivy2
-      - name: Set up JDK
+      - name: Setup JDK
         uses: actions/setup-java@v1
         with:
-          java-version: 13
+          java-version: 11
+      - name: Setup GraalVM
+        uses: rinx/setup-graalvm-ce@v0.0.3
+        with:
+          graalvm-version: 20.1.0
+          java-version: java11
+          native-image: true
       - name: Deploy CLI container image
         run: sbt server/s3Upload cli/ecr:push
