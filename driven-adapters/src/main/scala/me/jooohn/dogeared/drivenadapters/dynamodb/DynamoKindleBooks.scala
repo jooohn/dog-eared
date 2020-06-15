@@ -1,12 +1,17 @@
 package me.jooohn.dogeared.drivenadapters.dynamodb
 
-import cats.effect.IO
+import java.net.URL
+
+import cats.MonadError
+import cats.implicits._
 import io.chrisdavenport.log4cats.Logger
-import io.chrisdavenport.log4cats.slf4j.Slf4jLogger
-import me.jooohn.dogeared.domain.KindleBook
-import me.jooohn.dogeared.drivenports.KindleBooks
+import me.jooohn.dogeared.domain.{KindleBook, KindleBookId, TwitterUserId}
+import me.jooohn.dogeared.drivenports.{KindleBookQueries, KindleBooks}
 import org.scanamo._
+import org.scanamo.syntax._
 import org.scanamo.generic.auto._
+
+import scala.util.Try
 
 case class DynamoKindleBook(
     primaryKey: String,
@@ -15,11 +20,32 @@ case class DynamoKindleBook(
     bookId: String,
     url: String,
     authors: Set[String]
-)
+) {
+
+  def toKindleBook: KindleBook = KindleBook(
+    id = bookId,
+    title = data,
+    url = Try(new URL(url)).getOrElse {
+      throw new RuntimeException(s"url '${url}' cannot be mapped to URL. (${this})")
+    },
+    authors = authors.toList
+  )
+
+}
 object DynamoKindleBook {
+
+  val table: Table[DynamoKindleBook] = Table("dog-eared-main")
+  val primaryKeyPrefix: String = "KINDLE_BOOK#"
+  def primaryKey(kindleBookId: KindleBookId): String = s"${primaryKeyPrefix}${kindleBookId}"
+  def sortKey(kindleBookId: KindleBookId, shardSize: Int): String =
+    s"KINDLE_BOOK#${Shard.determine(kindleBookId, shardSize)}"
+
+  def findById(id: KindleBookId, shardSize: Int) =
+    table.get("primaryKey" -> primaryKey(id) and "sortKey" -> sortKey(id, shardSize))
+
   def from(kindleBook: KindleBook, shardSize: Int): DynamoKindleBook = DynamoKindleBook(
-    primaryKey = s"KINDLE_BOOK#${kindleBook.id}",
-    sortKey = s"KINDLE_BOOK#${Shard.determine(kindleBook.id, shardSize)}",
+    primaryKey = primaryKey(kindleBook.id),
+    sortKey = sortKey(kindleBook.id, shardSize),
     data = kindleBook.title,
     bookId = kindleBook.id,
     url = kindleBook.url.toString,
@@ -27,13 +53,32 @@ object DynamoKindleBook {
   )
 }
 
-class DynamoKindleBooks(scanamo: ScanamoCats[IO], logger: Logger[IO], shardSize: Int) extends KindleBooks[IO] {
-  val table: Table[DynamoKindleBook] = Table("dog-eared-main")
+class DynamoKindleBooks[F[_]: MonadError[*[_], Throwable]](scanamo: ScanamoCats[F], logger: Logger[F], shardSize: Int)
+    extends KindleBooks[F]
+    with KindleBookQueries[F] {
+  import DynamoErrorSyntax._
+  import DynamoKindleBook._
 
-  override def storeMany(kindleBooks: List[KindleBook]): IO[Unit] =
+  override def storeMany(kindleBooks: List[KindleBook]): F[Unit] =
     for {
       _ <- logger.info(s"storing ${kindleBooks.length} kindle books")
       _ <- scanamo.exec(table.putAll(kindleBooks.map(DynamoKindleBook.from(_, shardSize = shardSize)).toSet))
     } yield ()
+
+  override def resolve(bookId: KindleBookId): F[Option[KindleBook]] =
+    for {
+      kindleBook <- scanamo.exec(findById(bookId, shardSize)).raiseIfError
+    } yield kindleBook.map(_.toKindleBook)
+
+  override def resolveByUserId(userId: TwitterUserId): F[List[KindleBook]] = {
+    for {
+      userKindleBooks <- scanamo.exec(DynamoUserKindleBook.queryByUserIdOp(userId)).raiseIfError
+      primaryKeys = userKindleBooks
+        .map(userKindleBook =>
+          (primaryKey(userKindleBook.kindleBookId), sortKey(userKindleBook.kindleBookId, shardSize)))
+        .toSet
+      kindleBooks <- scanamo.exec(table.getAll(("primaryKey" and "sortKey") -> primaryKeys)).map(_.toList).raiseIfError
+    } yield kindleBooks.map(_.toKindleBook)
+  }
 
 }

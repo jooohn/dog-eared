@@ -1,7 +1,7 @@
-package me.jooohn.dogeared.server
+package me.jooohn.dogeared.lambda
 
 import cats.effect.{ExitCode, IO}
-import me.jooohn.dogeared.server.LambdaRuntimeAPI.{InvocationFailure, InvocationSuccess}
+import me.jooohn.dogeared.lambda.LambdaRuntimeAPI.{InvocationFailure, InvocationSuccess}
 
 class LambdaRuntime(runtimeAPI: LambdaRuntimeAPI, handler: Handler) {
 

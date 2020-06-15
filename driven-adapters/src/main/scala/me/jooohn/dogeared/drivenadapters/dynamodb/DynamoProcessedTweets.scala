@@ -1,6 +1,6 @@
 package me.jooohn.dogeared.drivenadapters.dynamodb
 
-import cats.effect.IO
+import cats.MonadError
 import cats.implicits._
 import io.chrisdavenport.log4cats.Logger
 import me.jooohn.dogeared.domain.{TweetId, TwitterUserId}
@@ -37,17 +37,21 @@ object DynamoProcessedTweet {
     )
 }
 
-class DynamoProcessedTweets(scanamo: ScanamoCats[IO], logger: Logger[IO], shardSize: Int) extends ProcessedTweets[IO] {
+class DynamoProcessedTweets[F[_]: MonadError[*[_], Throwable]](
+    scanamo: ScanamoCats[F],
+    logger: Logger[F],
+    shardSize: Int)
+    extends ProcessedTweets[F] {
   val table: Table[DynamoProcessedTweet] = Table[DynamoProcessedTweet]("dog-eared-main")
 
-  override def resolveByUserId(twitterUserId: TwitterUserId): IO[Option[ProcessedTweet]] =
+  override def resolveByUserId(twitterUserId: TwitterUserId): F[Option[ProcessedTweet]] =
     logger.info(s"resolving processed tweets for twitter user ${twitterUserId}") *> scanamo
       .exec(table.get("primaryKey" -> DynamoProcessedTweet
         .primaryKey(twitterUserId) and "sortKey" -> DynamoProcessedTweet.sortKey(twitterUserId, shardSize)))
       .raiseIfError
       .map(_.map(_.toProcessedTweet)) <* logger.info(s"resolved")
 
-  override def recordLatestProcessedTweetId(twitterUserId: TwitterUserId, tweetId: TweetId): IO[Unit] =
+  override def recordLatestProcessedTweetId(twitterUserId: TwitterUserId, tweetId: TweetId): F[Unit] =
     logger.info(s"recording ${tweetId} as the latest processed tweet for twitter user ${twitterUserId}") *> scanamo
       .exec(
         table.put(

@@ -1,4 +1,4 @@
-package me.jooohn.dogeared.server
+package me.jooohn.dogeared.lambda
 
 import ciris._
 import cats.implicits._

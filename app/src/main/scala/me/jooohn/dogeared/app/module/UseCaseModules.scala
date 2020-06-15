@@ -7,6 +7,7 @@ import me.jooohn.dogeared.usecases.{ImportKindleBookQuotesForAllUsers, ImportKin
 trait UseCaseModules {
   val tweets: Twitter[IO]
   val twitterUsers: TwitterUsers[IO]
+  val userKindleBooks: UserKindleBooks[IO]
   val kindleQuotePages: KindleQuotePages[IO]
   val kindleQuotedTweets: KindleQuotedTweets[IO]
   val kindleBooks: KindleBooks[IO]
@@ -15,6 +16,7 @@ trait UseCaseModules {
   lazy val importKindleBookQuotesForUser: ImportKindleBookQuotesForUser[IO] = new ImportKindleBookQuotesForUser[IO](
     twitter = tweets,
     twitterUsers = twitterUsers,
+    userKindleBooks = userKindleBooks,
     kindleQuotePages = kindleQuotePages,
     kindleQuotedTweets = kindleQuotedTweets,
     kindleBooks = kindleBooks,

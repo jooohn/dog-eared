@@ -9,6 +9,7 @@ lazy val appName = "dog-eared"
 lazy val catsVersion = "2.1.1"
 lazy val http4sVersion = "0.21.4"
 lazy val doobieVersion = "0.9.0"
+lazy val calibanVersion = "0.8.2"
 
 lazy val circeVersion = "0.12.3"
 lazy val circeDependencies = Seq(
@@ -55,20 +56,25 @@ lazy val commonSettings = Seq(
   test in assembly := {}
 )
 
-lazy val server = (project in file("server"))
+lazy val graphql = (project in file("graphql"))
+  .settings(commonSettings)
+  .settings(
+    name := s"${appName}-graphql",
+    libraryDependencies ++= circeDependencies ++ Seq(
+      "com.github.ghostdogpr" %% "caliban" % calibanVersion,
+      "com.github.ghostdogpr" %% "caliban-cats" % calibanVersion,
+    ),
+  )
+  .dependsOn(app, useCases, drivenAdapters)
+
+lazy val lambda = (project in file("lambda"))
   .enablePlugins(S3Plugin, GraalVMNativeImagePlugin)
   .settings(commonSettings)
   .settings(
-    name := s"${appName}-server",
-    libraryDependencies ++= circeDependencies ++ Seq(
-      "com.amazonaws" % "aws-lambda-java-core" % "1.2.1",
-      "com.amazonaws" % "aws-lambda-java-events" % "3.1.0",
-      "com.amazonaws" % "aws-lambda-java-log4j2" % "1.2.0" % "runtime",
-    ) ++ loggingDependencies,
-//    assemblyMergeStrategy in assembly := {
-//      case PathList("META-INF", xs @ _*) => MergeStrategy.discard
-//      case x => MergeStrategy.first
-//    },
+    name := s"${appName}-lambda",
+    libraryDependencies
+      ++= circeDependencies
+      ++ loggingDependencies,
     name in GraalVMNativeImage := "bootstrap",
     graalVMNativeImageOptions ++= extraGraalvmNativeImageOptions,
     lambdaRuntimeTargetZip := {
@@ -92,10 +98,21 @@ lazy val server = (project in file("server"))
     s3Host in s3Upload := sys.env.getOrElse("LAMBDA_S3_HOST", "lambda-functions.jooohn.me.s3-website-ap-northeast-1.amazonaws.com"),
     s3Upload := (s3Upload dependsOn lambdaRuntime).value,
     mappings in s3Upload := Seq(
-      lambdaRuntimeTargetZip.value -> s"${appName}/server-runtime"
+      lambdaRuntimeTargetZip.value -> s"${appName}/runtime"
     ),
   )
-  .dependsOn(app, useCases, drivenAdapters)
+  .dependsOn(graphql)
+
+lazy val server = (project in file("server"))
+  .enablePlugins(S3Plugin, GraalVMNativeImagePlugin)
+  .settings(commonSettings)
+  .settings(
+    name := s"${appName}-server",
+    libraryDependencies ++= loggingDependencies ++ Seq(
+      "com.github.ghostdogpr" %% "caliban-http4s" % calibanVersion,
+    ),
+  )
+  .dependsOn(app, useCases, drivenAdapters, graphql)
 
 lazy val domain = (project in file("domain"))
   .settings(commonSettings)
@@ -176,7 +193,7 @@ lazy val cli = (project in file("cli"))
     localDockerImage in Ecr := (packageName in Docker).value + ":" + (version in Docker).value,
     push in Ecr := ((push in Ecr) dependsOn (publishLocal in Docker, login in Ecr)).value,
   )
-  .dependsOn(app)
+  .dependsOn(app, server)
 
 lazy val tests = (project in file("tests"))
   .settings(commonSettings)

@@ -9,6 +9,7 @@ import me.jooohn.dogeared.drivenports._
 class ImportKindleBookQuotesForUser[F[_]: Monad](
     twitter: Twitter[F],
     twitterUsers: TwitterUsers[F],
+    userKindleBooks: UserKindleBooks[F],
     processedTweets: ProcessedTweets[F],
     kindleQuotePages: KindleQuotePages[F],
     kindleQuotedTweets: KindleQuotedTweets[F],
@@ -26,7 +27,7 @@ class ImportKindleBookQuotesForUser[F[_]: Monad](
   def apply(twitterUserId: TwitterUserId): F[Either[Error, Unit]] =
     (for {
       _ <- EitherT(ensureTwitterUserExistence(twitterUserId))
-      _ <- EitherT.right[Error](processNewTweets(twitterUserId)(importKindleBookQuotesFromTweets))
+      _ <- EitherT.right[Error](processNewTweets(twitterUserId)(importKindleBookQuotesFromTweets(twitterUserId)))
     } yield ()).value
 
   private def processNewTweets(twitterUserId: TwitterUserId)(f: List[Tweet] => F[Unit]): F[Unit] =
@@ -38,7 +39,7 @@ class ImportKindleBookQuotesForUser[F[_]: Monad](
         processedTweets.recordLatestProcessedTweetId(twitterUserId, latestTweet.id))
     } yield ()
 
-  private def importKindleBookQuotesFromTweets(tweets: List[Tweet]): F[Unit] = {
+  private def importKindleBookQuotesFromTweets(twitterUserId: TwitterUserId)(tweets: List[Tweet]): F[Unit] = {
     def resolveQuotesForTweet(tweets: List[Tweet]): F[Map[TweetId, KindleQuotePage]] =
       resolveKindleQuotePages(tweets.collectAmazonRedirectorLinkURLs) map {
         case (resolutionErrorByURL, quotePageByURL) =>
@@ -64,7 +65,9 @@ class ImportKindleBookQuotesForUser[F[_]: Monad](
 
     for {
       quotePageForTweet <- resolveQuotesForTweet(tweets)
-      _ <- kindleBooks.storeMany(quotePageForTweet.collectBooks)
+      books = quotePageForTweet.collectBooks
+      _ <- kindleBooks.storeMany(books)
+      _ <- userKindleBooks.storeMany(books.map(book => UserKindleBook(twitterUserId, book.id)))
       _ <- kindleQuotedTweets.storeMany(tweets.collectQuotedTweets(quotePageForTweet))
     } yield ()
   }

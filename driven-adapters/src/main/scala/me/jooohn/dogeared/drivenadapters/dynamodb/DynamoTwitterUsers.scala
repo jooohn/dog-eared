@@ -1,15 +1,16 @@
 package me.jooohn.dogeared.drivenadapters.dynamodb
 
-import cats.effect.{ConcurrentEffect, ContextShift, IO}
-import cats.effect.syntax._
+import cats.effect.ContextShift
 import cats.implicits._
+import cats.{MonadError, Parallel}
 import io.chrisdavenport.log4cats.Logger
 import me.jooohn.dogeared.domain.{TwitterUser, TwitterUserId}
-import me.jooohn.dogeared.drivenadapters.dynamodb.DynamoErrorSyntax._
-import me.jooohn.dogeared.drivenports.TwitterUsers
+import me.jooohn.dogeared.drivenadapters.dynamodb.DynamoTwitterUser.findByShardOp
+import me.jooohn.dogeared.drivenports.{TwitterUserQueries, TwitterUsers}
 import org.scanamo.generic.auto._
+import org.scanamo.ops.ScanamoOps
 import org.scanamo.syntax._
-import org.scanamo.{ScanamoCats, Table}
+import org.scanamo.{DynamoReadError, ScanamoCats, SecondaryIndex, Table}
 
 case class DynamoTwitterUser(
     primaryKey: String,
@@ -22,6 +23,16 @@ case class DynamoTwitterUser(
   )
 }
 object DynamoTwitterUser {
+  val table: Table[DynamoTwitterUser] = Table[DynamoTwitterUser]("dog-eared-main")
+  val sortKeyData: SecondaryIndex[DynamoTwitterUser] = table.index("sortKeyData")
+
+  def findByUniqueKeyOp(
+      twitterUserId: TwitterUserId,
+      shardSize: Int): ScanamoOps[Option[Either[DynamoReadError, DynamoTwitterUser]]] =
+    table.get("primaryKey" -> primaryKey(twitterUserId) and "sortKey" -> sortKey(twitterUserId, shardSize))
+
+  def findByShardOp(shard: Int): ScanamoOps[List[Either[DynamoReadError, DynamoTwitterUser]]] =
+    sortKeyData.query("sortKey" -> sortKeyForShard(shard))
 
   def primaryKey(twitterUserId: TwitterUserId): String = s"TWITTER_USER#${twitterUserId}"
   def sortKey(twitterUserId: TwitterUserId, shardSize: Int): String =
@@ -37,35 +48,35 @@ object DynamoTwitterUser {
   )
 }
 
-class DynamoTwitterUsers(scanamo: ScanamoCats[IO], logger: Logger[IO], shardSize: Int)(implicit CS: ContextShift[IO])
-    extends TwitterUsers[IO] {
-  val table: Table[DynamoTwitterUser] = Table[DynamoTwitterUser]("dog-eared-main")
+class DynamoTwitterUsers[F[_]: ContextShift: MonadError[*[_], Throwable]: Parallel](
+    scanamo: ScanamoCats[F],
+    logger: Logger[F],
+    shardSize: Int)
+    extends TwitterUsers[F]
+    with TwitterUserQueries[F] {
+  import DynamoTwitterUser._
+  import DynamoErrorSyntax._
 
-  override def resolve(id: TwitterUserId): IO[Option[TwitterUser]] =
-    logger.info(s"resolving twitter user ${id}") *>
-      scanamo
-        .exec(
-          table.get(
-            "primaryKey" -> DynamoTwitterUser.primaryKey(id) and "sortKey" -> DynamoTwitterUser.sortKey(id, shardSize)))
-        .raiseIfError
-        .map(_.map(_.toTwitterUser))
+  override def resolve(id: TwitterUserId): F[Option[TwitterUser]] =
+    for {
+      _ <- logger.info(s"resolving twitter user ${id}")
+      twitterUser <- scanamo.exec(findByUniqueKeyOp(id, shardSize)).raiseIfError.map(_.map(_.toTwitterUser))
+      _ <- logger.info(twitterUser.toString)
+    } yield twitterUser
 
-  override def resolveAll: IO[List[TwitterUser]] =
-    logger.info(s"resolving all twitter users") *>
-      (0 until shardSize).toList
-        .parTraverse(
-          shard =>
-            scanamo
-              .exec(table.filter("sortKey" -> DynamoTwitterUser.sortKeyForShard(shard)).scan())
-              .raiseIfError
-              .map(_.map(_.toTwitterUser)))
+  override def resolveAll: F[List[TwitterUser]] =
+    for {
+      _ <- logger.info(s"resolving all twitter users")
+      twitterUsers <- (0 until shardSize).toList
+        .parTraverse(shard => scanamo.exec(findByShardOp(shard)).raiseIfError.map(_.map(_.toTwitterUser)))
         .map(_.flatten)
+    } yield twitterUsers
 
-  override def store(twitterUser: TwitterUser): IO[Unit] =
+  override def store(twitterUser: TwitterUser): F[Unit] =
     logger.info(s"storing twitter user ${twitterUser.id} (@${twitterUser.username})") *>
       scanamo.exec(table.put(DynamoTwitterUser.from(twitterUser, shardSize)))
 
-  override def storeMany(twitterUsers: List[TwitterUser]): IO[Unit] =
+  override def storeMany(twitterUsers: List[TwitterUser]): F[Unit] =
     logger.info(s"storing ${twitterUsers.length} twitter users") *>
       scanamo.exec(table.putAll(twitterUsers.map(DynamoTwitterUser.from(_, shardSize)).toSet))
 }

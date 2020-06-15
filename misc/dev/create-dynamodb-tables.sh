@@ -19,7 +19,7 @@ aws dynamodb create-table \
         }
       ],
       "Projection": {
-        "ProjectionType": "KEYS_ONLY"
+        "ProjectionType": "ALL"
       },
       "ProvisionedThroughput": {
         "ReadCapacityUnits": 1,
@@ -39,7 +39,7 @@ aws dynamodb create-table \
         }
       ],
       "Projection": {
-        "ProjectionType": "KEYS_ONLY"
+        "ProjectionType": "ALL"
       },
       "ProvisionedThroughput": {
         "ReadCapacityUnits": 1,

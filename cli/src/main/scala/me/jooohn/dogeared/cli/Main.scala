@@ -12,6 +12,7 @@ object Main
     ) {
   override def main: Opts[IO[ExitCode]] =
     Opts.subcommands(
-      importTweets
+      importTweets,
+      server
     )
 }

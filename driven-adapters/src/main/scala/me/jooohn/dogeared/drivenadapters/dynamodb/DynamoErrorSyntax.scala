@@ -1,24 +1,24 @@
 package me.jooohn.dogeared.drivenadapters.dynamodb
 
-import cats.Traverse
-import cats.effect.IO
 import cats.implicits._
+import cats.{Monad, MonadError, Traverse}
 import org.scanamo.DynamoReadError
 
 object DynamoErrorSyntax {
 
   implicit class DynamoReadErrorOrOps[A](errorOr: Either[DynamoReadError, A]) {
 
-    def toIO: IO[A] = errorOr.fold(
-      error => IO.raiseError(new RuntimeException(DynamoReadError.describe(error))),
-      IO.pure
+    def toF[F[_]: MonadError[*[_], Throwable]]: F[A] = errorOr.fold(
+      error => MonadError[F, Throwable].raiseError[A](new RuntimeException(DynamoReadError.describe(error))),
+      Monad[F].pure
     )
 
   }
 
-  implicit class DynamoResultOps[F[_]: Traverse, A](result: IO[F[Either[DynamoReadError, A]]]) {
+  implicit class DynamoResultOps[F[_]: MonadError[*[_], Throwable], G[_]: Traverse, A](
+      result: F[G[Either[DynamoReadError, A]]]) {
 
-    def raiseIfError: IO[F[A]] = result.map(_.sequence).flatMap(_.toIO)
+    def raiseIfError: F[G[A]] = result.map(_.sequence).flatMap(_.toF[F])
 
   }
 

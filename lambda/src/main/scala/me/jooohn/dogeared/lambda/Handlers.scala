@@ -1,8 +1,8 @@
-package me.jooohn.dogeared.server
+package me.jooohn.dogeared.lambda
 
 import cats.effect.IO
 import io.circe.Json
-import me.jooohn.dogeared.server.LambdaRuntimeAPI.InvocationSuccess
+import me.jooohn.dogeared.lambda.LambdaRuntimeAPI.InvocationSuccess
 
 object Handlers {
 
@@ -13,7 +13,7 @@ object Handlers {
   }
 
   private[this] val map = Map[String, Handler](
-    "server" -> server,
+    "me/jooohn/dogeared/lambda" -> server,
   )
 
   def apply(name: String): Option[Handler] = map.get(name)

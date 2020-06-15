@@ -1,9 +1,9 @@
 package me.jooohn.dogeared
 
 import cats.effect.IO
-import me.jooohn.dogeared.server.LambdaRuntimeAPI.{InvocationRequest, InvocationResponse}
+import lambda.LambdaRuntimeAPI.{InvocationRequest, InvocationResponse}
 
-package object server {
+package object lambda {
 
   type Handler = InvocationRequest => IO[InvocationResponse]
 

@@ -1,4 +1,4 @@
-package me.jooohn.dogeared.server
+package me.jooohn.dogeared.lambda
 
 import cats.effect.IO
 import io.circe.{Encoder, Json}
