@@ -85,4 +85,4 @@ jobs:
           java-version: java11
           native-image: true
       - name: Deploy CLI container image
-        run: sbt me.jooohn.dogeared.server/s3Upload cli/ecr:push
+        run: sbt lambda/s3Upload cli/ecr:push
