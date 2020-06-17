@@ -65,7 +65,7 @@ lazy val graphql = (project in file("graphql"))
       "com.github.ghostdogpr" %% "caliban-cats" % calibanVersion,
     ),
   )
-  .dependsOn(app, useCases, drivenAdapters)
+  .dependsOn(useCases, drivenAdapters)
 
 lazy val lambda = (project in file("lambda"))
   .enablePlugins(S3Plugin, GraalVMNativeImagePlugin)
@@ -101,7 +101,7 @@ lazy val lambda = (project in file("lambda"))
       lambdaRuntimeTargetZip.value -> s"${appName}/runtime"
     ),
   )
-  .dependsOn(graphql)
+  .dependsOn(app)
 
 lazy val server = (project in file("server"))
   .enablePlugins(S3Plugin, GraalVMNativeImagePlugin)
@@ -112,7 +112,7 @@ lazy val server = (project in file("server"))
       "com.github.ghostdogpr" %% "caliban-http4s" % calibanVersion,
     ),
   )
-  .dependsOn(app, useCases, drivenAdapters, graphql)
+  .dependsOn(useCases, drivenAdapters, graphql)
 
 lazy val domain = (project in file("domain"))
   .settings(commonSettings)
@@ -172,7 +172,7 @@ lazy val app = (project in file("app"))
       "is.cir" %% "ciris" % "1.0.4",
     )
   )
-  .dependsOn(useCases, drivenPorts, drivenAdapters)
+  .dependsOn(useCases, drivenPorts, drivenAdapters, server)
 
 lazy val cli = (project in file("cli"))
   .enablePlugins(JavaAppPackaging, DockerPlugin, EcrPlugin)
@@ -193,7 +193,7 @@ lazy val cli = (project in file("cli"))
     localDockerImage in Ecr := (packageName in Docker).value + ":" + (version in Docker).value,
     push in Ecr := ((push in Ecr) dependsOn (publishLocal in Docker, login in Ecr)).value,
   )
-  .dependsOn(app, server)
+  .dependsOn(app)
 
 lazy val tests = (project in file("tests"))
   .settings(commonSettings)
@@ -205,5 +205,5 @@ lazy val tests = (project in file("tests"))
     ),
     testFrameworks += new TestFramework("munit.Framework")
   )
-  .dependsOn(useCases, drivenAdapters, app)
+  .dependsOn(useCases, drivenAdapters, app, cli, lambda)
 

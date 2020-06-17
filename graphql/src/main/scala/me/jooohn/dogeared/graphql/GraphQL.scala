@@ -1,16 +1,15 @@
 package me.jooohn.dogeared.graphql
 
-import cats.implicits._
 import caliban.GraphQL.graphQL
-import caliban.{CalibanError, GraphQLInterpreter, RootResolver}
 import caliban.interop.cats.implicits._
-import Wrappers._
 import caliban.schema.Schema
-import cats.effect.{Async, ConcurrentEffect}
-import me.jooohn.dogeared.drivenports.{KindleBookQueries, KindleQuotedTweetQueries, TwitterUserQueries}
-import zio.Runtime
 import caliban.wrappers.Wrappers._
+import caliban.{CalibanError, GraphQLInterpreter, RootResolver}
+import cats.effect.ConcurrentEffect
 import io.chrisdavenport.log4cats.Logger
+import me.jooohn.dogeared.drivenports.{KindleBookQueries, KindleQuotedTweetQueries, TwitterUserQueries}
+import me.jooohn.dogeared.graphql.Wrappers._
+import zio.Runtime
 
 object GraphQL {
 

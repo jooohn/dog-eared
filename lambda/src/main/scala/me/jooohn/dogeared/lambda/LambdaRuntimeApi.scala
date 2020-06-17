@@ -11,8 +11,8 @@ import org.http4s.client.dsl.io._
 import org.http4s.util.CaseInsensitiveString
 
 // https://docs.aws.amazon.com/lambda/latest/dg/runtimes-api.html#runtimes-api-next
-class LambdaRuntimeAPI(baseUri: Uri, client: Client[IO]) {
-  import LambdaRuntimeAPI._
+class LambdaRuntimeApi(baseUri: Uri, client: Client[IO]) {
+  import LambdaRuntimeApi._
 
   val runtimeAPIVersion = "2018-06-01"
 
@@ -41,7 +41,7 @@ class LambdaRuntimeAPI(baseUri: Uri, client: Client[IO]) {
     }
 
   def invocationResponse(requestId: RequestId, success: InvocationSuccess): IO[Unit] =
-    client.expect[Unit](POST(success.body, invocationResponseUri(requestId)))
+    client.expect[Unit](POST(success.response, invocationResponseUri(requestId)))
 
   def invocationError(requestId: RequestId, failure: InvocationFailure): IO[Unit] =
     client.expect[Unit](
@@ -64,7 +64,7 @@ class LambdaRuntimeAPI(baseUri: Uri, client: Client[IO]) {
   }
 }
 
-object LambdaRuntimeAPI {
+object LambdaRuntimeApi {
   type RequestId = String
 
   case class InvocationRequest(
@@ -75,7 +75,7 @@ object LambdaRuntimeAPI {
 
   sealed trait InvocationResponse
 
-  case class InvocationSuccess(body: Json) extends InvocationResponse
+  case class InvocationSuccess(response: Json) extends InvocationResponse
 
   case class InvocationFailure(errorType: String, errorMessage: String) extends InvocationResponse
   object InvocationFailure {

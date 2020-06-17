@@ -1,9 +1,9 @@
 package me.jooohn.dogeared.lambda
 
 import cats.effect.{ExitCode, IO}
-import me.jooohn.dogeared.lambda.LambdaRuntimeAPI.{InvocationFailure, InvocationSuccess}
+import me.jooohn.dogeared.lambda.LambdaRuntimeApi.{InvocationFailure, InvocationSuccess}
 
-class LambdaRuntime(runtimeAPI: LambdaRuntimeAPI, handler: Handler) {
+class LambdaRuntime(runtimeAPI: LambdaRuntimeApi, handler: Handler) {
 
   def run: IO[ExitCode] =
     for {
