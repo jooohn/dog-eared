@@ -26,11 +26,14 @@ lazy val dbPassword = sys.env.getOrElse("DB_PASSWORD", "")
 val extraGraalvmNativeImageOptions = Seq(
   "-H:+ReportExceptionStackTraces",
   "-H:+TraceClassInitialization",
+  "--static",
   "--verbose",
-  "--report-unsupported-elements-at-runtime",
-  "--initialize-at-build-time",
   "--allow-incomplete-classpath",
   "--no-fallback",
+  "--initialize-at-build-time",
+  "--enable-http",
+  "--enable-https",
+  "--enable-all-security-services",
 )
 
 lazy val loggingDependencies = Seq(
@@ -170,7 +173,7 @@ lazy val app = (project in file("app"))
     name := s"${appName}-app",
     libraryDependencies ++= Seq(
       "is.cir" %% "ciris" % "1.0.4",
-      "software.amazon.awssdk" % "ssm" % "2.13.37",
+      "software.amazon.awssdk" % "secretsmanager" % "2.13.37",
     )
   )
   .dependsOn(useCases, drivenPorts, drivenAdapters, server)
