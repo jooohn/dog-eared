@@ -46,10 +46,10 @@ case class TwitterConfig(
 )
 object TwitterConfig {
   val configValue: ConfigValue[TwitterConfig] = (
-    env("TWITTER_CONSUMER_TOKEN_KEY"),
-    env("TWITTER_CONSUMER_TOKEN_SECRET"),
-    env("TWITTER_ACCESS_TOKEN_KEY"),
-    env("TWITTER_ACCESS_TOKEN_SECRET")
+    env("TWITTER_CONSUMER_TOKEN_KEY").orSsmSecret("dog-eared-twitter-consumer-token-key"),
+    env("TWITTER_CONSUMER_TOKEN_SECRET").orSsmSecret("dog-eared-twitter-consumer-token-secret"),
+    env("TWITTER_ACCESS_TOKEN_KEY").orSsmSecret("dog-eared-twitter-access-token-key"),
+    env("TWITTER_ACCESS_TOKEN_SECRET").orSsmSecret("dog-eared-twitter-access-token-secret")
   ).parMapN(TwitterConfig.apply)
 }
 

@@ -170,6 +170,7 @@ lazy val app = (project in file("app"))
     name := s"${appName}-app",
     libraryDependencies ++= Seq(
       "is.cir" %% "ciris" % "1.0.4",
+      "software.amazon.awssdk" % "ssm" % "2.13.37",
     )
   )
   .dependsOn(useCases, drivenPorts, drivenAdapters, server)
