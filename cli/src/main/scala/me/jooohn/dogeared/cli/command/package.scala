@@ -54,10 +54,10 @@ package object command {
                 logger = app.logger,
               )
               _ <- BlazeServerBuilder[IO](scala.concurrent.ExecutionContext.global)
-                .bindHttp(portOpt.getOrElse(8080), "localhost")
+                .bindHttp(portOpt.getOrElse(8080), "0.0.0.0")
                 .withHttpApp(HttpService(interpreter))
                 .resource
-                .use(_ => IO(scala.io.StdIn.readLine()))
+                .use(_ => IO.never)
             } yield ()
           } as ExitCode.Success
         }

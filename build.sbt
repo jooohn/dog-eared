@@ -1,8 +1,4 @@
-import java.io.FileOutputStream
-import java.nio.file.Files
-
 import com.amazonaws.regions.{Region, Regions}
-import org.apache.commons.compress.archivers.zip.{ZipArchiveEntry, ZipArchiveOutputStream}
 
 lazy val appName = "dog-eared"
 
@@ -23,26 +19,10 @@ lazy val dbPort = sys.env.getOrElse("DB_PORT", "5432")
 lazy val dbUser = sys.env.getOrElse("DB_USER", "postgres")
 lazy val dbPassword = sys.env.getOrElse("DB_PASSWORD", "")
 
-val extraGraalvmNativeImageOptions = Seq(
-  "-H:+ReportExceptionStackTraces",
-  "-H:+TraceClassInitialization",
-  "--static",
-  "--verbose",
-  "--allow-incomplete-classpath",
-  "--no-fallback",
-  "--initialize-at-build-time",
-  "--enable-http",
-  "--enable-https",
-  "--enable-all-security-services",
-)
-
 lazy val loggingDependencies = Seq(
   "ch.qos.logback" % "logback-classic" % "1.2.3",
   "net.logstash.logback" % "logstash-logback-encoder" % "6.3",
 )
-
-val lambdaRuntimeTargetZip = taskKey[File]("lambda runtime zip")
-val lambdaRuntime = taskKey[File]("create lambda runtime zip")
 
 lazy val commonSettings = Seq(
   version := "0.1",
@@ -69,42 +49,6 @@ lazy val graphql = (project in file("graphql"))
     ),
   )
   .dependsOn(useCases, drivenAdapters)
-
-lazy val lambda = (project in file("lambda"))
-  .enablePlugins(S3Plugin, GraalVMNativeImagePlugin)
-  .settings(commonSettings)
-  .settings(
-    name := s"${appName}-lambda",
-    libraryDependencies
-      ++= circeDependencies
-      ++ loggingDependencies,
-    name in GraalVMNativeImage := "bootstrap",
-    graalVMNativeImageOptions ++= extraGraalvmNativeImageOptions,
-    lambdaRuntimeTargetZip := {
-      val targetDirectory = target.value / "lambda-runtime"
-      targetDirectory.mkdirs()
-      targetDirectory / "runtime.zip"
-    },
-    lambdaRuntime := {
-      val source = (target in GraalVMNativeImage).value / (name in GraalVMNativeImage).value
-      val targetFile = lambdaRuntimeTargetZip.value
-      val out = new ZipArchiveOutputStream(new FileOutputStream(targetFile))
-      val entry = new ZipArchiveEntry("bootstrap")
-      entry.setUnixMode(0x1ed)
-      out.putArchiveEntry(entry)
-      Files.copy(source.toPath, out)
-      out.closeArchiveEntry()
-      out.close()
-      targetFile
-    },
-    lambdaRuntime := (lambdaRuntime dependsOn (packageBin in GraalVMNativeImage)).value,
-    s3Host in s3Upload := sys.env.getOrElse("LAMBDA_S3_HOST", "lambda-functions.jooohn.me.s3-website-ap-northeast-1.amazonaws.com"),
-    s3Upload := (s3Upload dependsOn lambdaRuntime).value,
-    mappings in s3Upload := Seq(
-      lambdaRuntimeTargetZip.value -> s"${appName}/runtime"
-    ),
-  )
-  .dependsOn(app)
 
 lazy val server = (project in file("server"))
   .enablePlugins(S3Plugin, GraalVMNativeImagePlugin)
@@ -188,6 +132,7 @@ lazy val cli = (project in file("cli"))
       "com.monovore" %% "decline-effect" % "1.0.0",
     ) ++ loggingDependencies,
     dockerBaseImage := "openjdk:11",
+    dockerExposedPorts := List(8080),
     packageName in Docker := s"${appName}-cli",
     daemonUser in Docker := s"${appName}",
     dockerUpdateLatest := true,
@@ -209,5 +154,5 @@ lazy val tests = (project in file("tests"))
     ),
     testFrameworks += new TestFramework("munit.Framework")
   )
-  .dependsOn(useCases, drivenAdapters, app, cli, lambda)
+  .dependsOn(useCases, drivenAdapters, app, cli)
 

@@ -78,17 +78,5 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: 11
-      - name: Setup GraalVM
-        uses: rinx/setup-graalvm-ce@v0.0.3
-        with:
-          graalvm-version: 20.1.0
-          java-version: java11
-          native-image: true
-      - name: Set up AWS CLI
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-region: ap-northeast-1
       - name: Deploy artifacts
-        run: sbt lambda/s3Upload cli/ecr:push
-      - name: Update lambda runtime
-        run: aws lambda update-function-code --function-name dog-eared-server  --s3-bucket lambda-functions.jooohn.me --s3-key dog-eared/runtime
+        run: sbt cli/ecr:push
