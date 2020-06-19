@@ -8,6 +8,9 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: scala
 
     services:
       postgres:
@@ -48,7 +51,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.DUMMY_AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-northeast-1
       - name: Create dynamodb tables
-        run: ./misc/dev/create-dynamodb-tables.sh
+        run: ../misc/dev/create-dynamodb-tables.sh
         env:
           AWS_DYNAMODB_ENDPOINT: http://localhost:${{ job.services.dynamodb.ports[8000] }}
       - name: Run tests
@@ -59,9 +62,12 @@ jobs:
   deploy:
     name: Deploy me.jooohn.dogeared.server.jar and CLI image
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/chore/ci-deploy'
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/ci-deploy'
     needs:
       - test
+    defaults:
+      run:
+        working-directory: scala
     steps:
       - uses: actions/checkout@v2
       - name: Cache ~/.sbt
@@ -78,11 +84,5 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: 11
-      - name: Setup GraalVM
-        uses: rinx/setup-graalvm-ce@v0.0.3
-        with:
-          graalvm-version: 20.1.0
-          java-version: java11
-          native-image: true
-      - name: Deploy CLI container image
-        run: sbt lambda/s3Upload cli/ecr:push
+      - name: Deploy artifacts
+        run: sbt cli/ecr:push
