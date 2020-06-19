@@ -8,6 +8,9 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: scala
 
     services:
       postgres:
@@ -48,7 +51,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.DUMMY_AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-northeast-1
       - name: Create dynamodb tables
-        run: ./misc/dev/create-dynamodb-tables.sh
+        run: ../misc/dev/create-dynamodb-tables.sh
         env:
           AWS_DYNAMODB_ENDPOINT: http://localhost:${{ job.services.dynamodb.ports[8000] }}
       - name: Run tests
@@ -62,6 +65,9 @@ jobs:
     if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/ci-deploy'
     needs:
       - test
+    defaults:
+      run:
+        working-directory: scala
     steps:
       - uses: actions/checkout@v2
       - name: Cache ~/.sbt

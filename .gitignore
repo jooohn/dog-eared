@@ -1,6 +1,2 @@
 .envrc
-*.class
-*.log
-/target
-/*/target
-/project/project
+.idea
