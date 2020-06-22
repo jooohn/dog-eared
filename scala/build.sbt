@@ -1,23 +1,24 @@
 import com.amazonaws.regions.{Region, Regions}
 
-lazy val appName = "dog-eared"
+val appName = "dog-eared"
 
-lazy val catsVersion = "2.1.1"
-lazy val http4sVersion = "0.21.4"
-lazy val doobieVersion = "0.9.0"
-lazy val calibanVersion = "0.8.2"
+val catsVersion = "2.1.1"
+val shapelessVersion = "2.3.3"
+val http4sVersion = "0.21.4"
+val doobieVersion = "0.9.0"
+val calibanVersion = "0.8.2"
 
-lazy val circeVersion = "0.12.3"
-lazy val circeDependencies = Seq(
+val circeVersion = "0.12.3"
+val circeDependencies = Seq(
   "io.circe" %% "circe-core",
   "io.circe" %% "circe-generic",
   "io.circe" %% "circe-parser",
 ).map(_ % circeVersion)
 
-lazy val dbHost = sys.env.getOrElse("DB_HOST", "localhost")
-lazy val dbPort = sys.env.getOrElse("DB_PORT", "5432")
-lazy val dbUser = sys.env.getOrElse("DB_USER", "postgres")
-lazy val dbPassword = sys.env.getOrElse("DB_PASSWORD", "")
+val dbHost = sys.env.getOrElse("DB_HOST", "localhost")
+val dbPort = sys.env.getOrElse("DB_PORT", "5432")
+val dbUser = sys.env.getOrElse("DB_USER", "postgres")
+val dbPassword = sys.env.getOrElse("DB_PASSWORD", "")
 
 lazy val loggingDependencies = Seq(
   "ch.qos.logback" % "logback-classic" % "1.2.3",
@@ -111,6 +112,16 @@ lazy val drivenAdapters = (project in file("driven-adapters"))
   .dependsOn(drivenPorts)
   .enablePlugins(FlywayPlugin)
 
+lazy val di = (project in file("di"))
+  .settings(commonSettings)
+  .settings(
+    name := s"${appName}-di",
+    libraryDependencies ++= Seq(
+      "org.scala-lang" % "scala-reflect" % scalaVersion.value,
+      "com.chuusai" %% "shapeless" % shapelessVersion,
+    ),
+  )
+
 lazy val app = (project in file("app"))
   .settings(commonSettings)
   .settings(
@@ -120,7 +131,7 @@ lazy val app = (project in file("app"))
       "software.amazon.awssdk" % "secretsmanager" % "2.13.37",
     )
   )
-  .dependsOn(useCases, drivenPorts, drivenAdapters, server)
+  .dependsOn(useCases, drivenPorts, drivenAdapters, server, di)
 
 lazy val cli = (project in file("cli"))
   .enablePlugins(JavaAppPackaging, DockerPlugin, EcrPlugin)

@@ -15,7 +15,7 @@ class DynamoTwitterUsersSuite extends munit.FunSuite with DynamoDBFixtures {
     username = Random.nextString(8),
   )
 
-  def newAdapter(): DynamoTwitterUsers[IO] = new DynamoTwitterUsers(scanamoFixture(), ioLogger, 4)
+  def newAdapter(): DynamoTwitterUsers[IO] = DynamoTwitterUsers(scanamoFixture(), ioLogger, Shard.size(4))
 
   test("should resolve object after stored") {
     val testUser = newTestUser()

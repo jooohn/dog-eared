@@ -36,7 +36,7 @@ object DynamoUserKindleBook {
   def queryByUserIdOp(twitterUserId: TwitterUserId): ScanamoOps[List[Either[DynamoReadError, DynamoUserKindleBook]]] =
     table.query("primaryKey" -> primaryKey(twitterUserId) and ("sortKey" beginsWith sortKeyPrefix))
 }
-class DynamoUserKindleBooks[F[_]: Monad](scanamo: ScanamoCats[F], logger: Logger[F]) extends UserKindleBooks[F] {
+case class DynamoUserKindleBooks[F[_]: Monad](scanamo: ScanamoCats[F], logger: Logger[F]) extends UserKindleBooks[F] {
   import DynamoUserKindleBook._
 
   override def storeMany(userKindleBooks: List[UserKindleBook]): F[Unit] =

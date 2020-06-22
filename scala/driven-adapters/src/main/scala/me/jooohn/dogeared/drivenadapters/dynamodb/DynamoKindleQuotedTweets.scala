@@ -73,7 +73,7 @@ object DynamoKindleQuotedTweet {
 
 }
 
-class DynamoKindleQuotedTweets[F[_]: MonadError[*[_], Throwable]](scanamo: ScanamoCats[F], logger: Logger[F])
+case class DynamoKindleQuotedTweets[F[_]: MonadError[*[_], Throwable]](scanamo: ScanamoCats[F], logger: Logger[F])
     extends KindleQuotedTweets[F]
     with KindleQuotedTweetQueries[F] {
   import DynamoKindleQuotedTweet._

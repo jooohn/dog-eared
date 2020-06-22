@@ -5,7 +5,7 @@ import cats.data.NonEmptyList
 import cats.implicits._
 import me.jooohn.dogeared.drivenports.TwitterUsers
 
-class ImportKindleBookQuotesForAllUsers[F[_]: Monad](
+case class ImportKindleBookQuotesForAllUsers[F[_]: Monad](
     importKindleBookQuotesForUser: ImportKindleBookQuotesForUser[F],
     twitterUsers: TwitterUsers[F]
 ) {

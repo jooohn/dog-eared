@@ -37,13 +37,13 @@ object DynamoKindleBook {
   val table: Table[DynamoKindleBook] = Table("dog-eared-main")
   val primaryKeyPrefix: String = "KINDLE_BOOK#"
   def primaryKey(kindleBookId: KindleBookId): String = s"${primaryKeyPrefix}${kindleBookId}"
-  def sortKey(kindleBookId: KindleBookId, shardSize: Int): String =
+  def sortKey(kindleBookId: KindleBookId, shardSize: Shard.Size): String =
     s"KINDLE_BOOK#${Shard.determine(kindleBookId, shardSize)}"
 
-  def findById(id: KindleBookId, shardSize: Int) =
+  def findById(id: KindleBookId, shardSize: Shard.Size) =
     table.get("primaryKey" -> primaryKey(id) and "sortKey" -> sortKey(id, shardSize))
 
-  def from(kindleBook: KindleBook, shardSize: Int): DynamoKindleBook = DynamoKindleBook(
+  def from(kindleBook: KindleBook, shardSize: Shard.Size): DynamoKindleBook = DynamoKindleBook(
     primaryKey = primaryKey(kindleBook.id),
     sortKey = sortKey(kindleBook.id, shardSize),
     data = kindleBook.title,
@@ -53,7 +53,10 @@ object DynamoKindleBook {
   )
 }
 
-class DynamoKindleBooks[F[_]: MonadError[*[_], Throwable]](scanamo: ScanamoCats[F], logger: Logger[F], shardSize: Int)
+case class DynamoKindleBooks[F[_]: MonadError[*[_], Throwable]](
+    scanamo: ScanamoCats[F],
+    logger: Logger[F],
+    shardSize: Shard.Size)
     extends KindleBooks[F]
     with KindleBookQueries[F] {
   import DynamoErrorSyntax._

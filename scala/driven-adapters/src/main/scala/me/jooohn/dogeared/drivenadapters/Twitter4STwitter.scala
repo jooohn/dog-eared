@@ -10,7 +10,7 @@ import me.jooohn.dogeared.drivenports.{ConcurrentIO, ProcessedTweets, Twitter}
 
 import scala.util.Try
 
-class Twitter4STwitter(
+case class Twitter4STwitter(
     restClient: TwitterRestClient,
     processedTweets: ProcessedTweets[IO],
     concurrentIO: ConcurrentIO[IO])(implicit CS: ContextShift[IO])

@@ -28,30 +28,30 @@ object DynamoTwitterUser {
 
   def findByUniqueKeyOp(
       twitterUserId: TwitterUserId,
-      shardSize: Int): ScanamoOps[Option[Either[DynamoReadError, DynamoTwitterUser]]] =
+      shardSize: Shard.Size): ScanamoOps[Option[Either[DynamoReadError, DynamoTwitterUser]]] =
     table.get("primaryKey" -> primaryKey(twitterUserId) and "sortKey" -> sortKey(twitterUserId, shardSize))
 
-  def findByShardOp(shard: Int): ScanamoOps[List[Either[DynamoReadError, DynamoTwitterUser]]] =
+  def findByShardOp(shard: Shard.Size): ScanamoOps[List[Either[DynamoReadError, DynamoTwitterUser]]] =
     sortKeyData.query("sortKey" -> sortKeyForShard(shard))
 
   def primaryKey(twitterUserId: TwitterUserId): String = s"TWITTER_USER#${twitterUserId}"
-  def sortKey(twitterUserId: TwitterUserId, shardSize: Int): String =
+  def sortKey(twitterUserId: TwitterUserId, shardSize: Shard.Size): String =
     sortKeyForShard(Shard.determine(twitterUserId, shardSize))
 
-  def sortKeyForShard(shardId: Int): String =
+  def sortKeyForShard(shardId: Shard.Size): String =
     s"TWITTER_USER#${shardId}"
 
-  def from(twitterUser: TwitterUser, shardSize: Int): DynamoTwitterUser = DynamoTwitterUser(
+  def from(twitterUser: TwitterUser, shardSize: Shard.Size): DynamoTwitterUser = DynamoTwitterUser(
     primaryKey = primaryKey(twitterUser.id),
     sortKey = sortKey(twitterUser.id, shardSize),
     data = twitterUser.username,
   )
 }
 
-class DynamoTwitterUsers[F[_]: ContextShift: MonadError[*[_], Throwable]: Parallel](
+case class DynamoTwitterUsers[F[_]: ContextShift: MonadError[*[_], Throwable]: Parallel](
     scanamo: ScanamoCats[F],
     logger: Logger[F],
-    shardSize: Int)
+    shardSize: Shard.Size)
     extends TwitterUsers[F]
     with TwitterUserQueries[F] {
   import DynamoTwitterUser._
@@ -68,7 +68,7 @@ class DynamoTwitterUsers[F[_]: ContextShift: MonadError[*[_], Throwable]: Parall
     for {
       _ <- logger.info(s"resolving all twitter users")
       twitterUsers <- (0 until shardSize).toList
-        .parTraverse(shard => scanamo.exec(findByShardOp(shard)).raiseIfError.map(_.map(_.toTwitterUser)))
+        .parTraverse(shard => scanamo.exec(findByShardOp(Shard.size(shard))).raiseIfError.map(_.map(_.toTwitterUser)))
         .map(_.flatten)
     } yield twitterUsers
 

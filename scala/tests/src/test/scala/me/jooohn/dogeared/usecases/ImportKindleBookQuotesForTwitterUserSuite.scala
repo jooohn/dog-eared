@@ -27,7 +27,7 @@ class ImportKindleBookQuotesForTwitterUserSuite extends munit.FunSuite with Dyna
         twitterUsers = testUser :: Nil,
       )
     val logger = Slf4jLogger.getLogger[IO]
-    val processedTweets = new DynamoProcessedTweets[IO](scanamoFixture(), logger, 1)
+    val processedTweets = new DynamoProcessedTweets[IO](scanamoFixture(), logger, Shard.size(1))
 
     val useCase = new ImportKindleBookQuotesForUser[IO](
       twitter = twitter,
@@ -42,10 +42,10 @@ class ImportKindleBookQuotesForTwitterUserSuite extends munit.FunSuite with Dyna
             quoteBody = "abc",
           )
         )),
-      twitterUsers = new DynamoTwitterUsers(scanamoFixture(), logger, 1),
+      twitterUsers = new DynamoTwitterUsers(scanamoFixture(), logger, Shard.size(1)),
       userKindleBooks = new DynamoUserKindleBooks(scanamoFixture(), logger),
       kindleQuotedTweets = new DynamoKindleQuotedTweets(scanamoFixture(), logger),
-      kindleBooks = new DynamoKindleBooks(scanamoFixture(), logger, 1),
+      kindleBooks = new DynamoKindleBooks(scanamoFixture(), logger, Shard.size(1)),
       processedTweets = processedTweets,
     )
     useCase(testUser.id).unsafeRunSync()
