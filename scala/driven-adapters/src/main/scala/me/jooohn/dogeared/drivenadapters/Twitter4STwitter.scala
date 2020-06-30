@@ -36,7 +36,7 @@ case class Twitter4STwitter(
         Some(
           TwitterUser(
             id = twitterUserId,
-            username = data.data.name
+            username = data.data.screen_name
           ))
       }
     }

@@ -11,6 +11,7 @@ import org.http4s._
 import org.http4s.dsl.Http4sDsl
 import org.http4s.implicits._
 import org.http4s.server.Router
+import org.http4s.server.middleware.{CORS, CORSConfig}
 
 class HttpService[F[_]: Effect, R](graphql: GraphQLInterpreter[R, CalibanError])(implicit R: zio.Runtime[R])
     extends Http4sDsl[F] {
@@ -19,8 +20,12 @@ class HttpService[F[_]: Effect, R](graphql: GraphQLInterpreter[R, CalibanError])
     case GET -> Root / "healthcheck" => Ok("OK")
   }
   val graphQLRoutes: HttpRoutes[F] = Router(
-    "/graphql" -> Http4sAdapter.makeHttpServiceF[F, CalibanError](
-      graphql.asInstanceOf[GraphQLInterpreter[Any, CalibanError]])
+    "/graphql" -> CORS(
+      Http4sAdapter.makeHttpServiceF[F, CalibanError](graphql.asInstanceOf[GraphQLInterpreter[Any, CalibanError]]),
+      CORS.DefaultCORSConfig.copy(
+        allowedOrigins = origin => origin == "localhost" || origin == "jooohn.me" || origin.endsWith(".jooohn.me")
+      )
+    )
   )
 
   val routes: Kleisli[F, Request[F], Response[F]] = (healthCheckRoutes <+> graphQLRoutes).orNotFound

@@ -1,14 +1,15 @@
 package me.jooohn.dogeared.drivenadapters.dynamodb
 
 import cats.effect.ContextShift
+import cats.free.Free
 import cats.implicits._
 import cats.{MonadError, Parallel}
 import io.chrisdavenport.log4cats.Logger
-import me.jooohn.dogeared.domain.{TwitterUser, TwitterUserId}
+import me.jooohn.dogeared.domain.{TwitterUser, TwitterUserId, TwitterUsername}
 import me.jooohn.dogeared.drivenadapters.dynamodb.DynamoTwitterUser.findByShardOp
 import me.jooohn.dogeared.drivenports.{TwitterUserQueries, TwitterUsers}
 import org.scanamo.generic.auto._
-import org.scanamo.ops.ScanamoOps
+import org.scanamo.ops.{ScanamoOps, ScanamoOpsA}
 import org.scanamo.syntax._
 import org.scanamo.{DynamoReadError, ScanamoCats, SecondaryIndex, Table}
 
@@ -25,6 +26,7 @@ case class DynamoTwitterUser(
 object DynamoTwitterUser {
   val table: Table[DynamoTwitterUser] = Table[DynamoTwitterUser]("dog-eared-main")
   val sortKeyData: SecondaryIndex[DynamoTwitterUser] = table.index("sortKeyData")
+  val dataSortKey: SecondaryIndex[DynamoTwitterUser] = table.index("dataSortKey")
 
   def findByUniqueKeyOp(
       twitterUserId: TwitterUserId,
@@ -33,6 +35,10 @@ object DynamoTwitterUser {
 
   def findByShardOp(shard: Shard.Size): ScanamoOps[List[Either[DynamoReadError, DynamoTwitterUser]]] =
     sortKeyData.query("sortKey" -> sortKeyForShard(shard))
+
+  def findByUsernameOp(
+      twitterUsername: TwitterUsername): ScanamoOps[Option[Either[DynamoReadError, DynamoTwitterUser]]] =
+    dataSortKey.query(("data" -> twitterUsername) and ("sortKey" beginsWith "TWITTER_USER#")).map(_.headOption)
 
   def primaryKey(twitterUserId: TwitterUserId): String = s"TWITTER_USER#${twitterUserId}"
   def sortKey(twitterUserId: TwitterUserId, shardSize: Shard.Size): String =
@@ -61,6 +67,13 @@ case class DynamoTwitterUsers[F[_]: ContextShift: MonadError[*[_], Throwable]: P
     for {
       _ <- logger.info(s"resolving twitter user ${id}")
       twitterUser <- scanamo.exec(findByUniqueKeyOp(id, shardSize)).raiseIfError.map(_.map(_.toTwitterUser))
+      _ <- logger.info(twitterUser.toString)
+    } yield twitterUser
+
+  override def resolveByUsername(username: TwitterUsername): F[Option[TwitterUser]] =
+    for {
+      _ <- logger.info(s"resolving twitter user by username ${username}")
+      twitterUser <- scanamo.exec(findByUsernameOp(username)).raiseIfError.map(_.map(_.toTwitterUser))
       _ <- logger.info(twitterUser.toString)
     } yield twitterUser
 

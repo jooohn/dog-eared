@@ -1,14 +1,13 @@
 package me.jooohn.dogeared.cli
 
-import cats.effect.{ContextShift, ExitCode, IO, Timer}
+import cats.effect.concurrent.MVar
+import cats.effect.{ConcurrentEffect, ContextShift, ExitCode, IO, Timer}
 import com.monovore.decline.{Command, Opts}
 import me.jooohn.dogeared.app.AppDesign
 import me.jooohn.dogeared.domain.TwitterUserId
+import sun.misc.Signal
 
-class Commands(
-    implicit val contextShift: ContextShift[IO],
-    val timer: Timer[IO],
-    val zioRuntime: zio.Runtime[zio.ZEnv]) {
+class Commands(implicit val cs: ContextShift[IO], val timer: Timer[IO], val zioRuntime: zio.Runtime[zio.ZEnv]) {
   val design: AppDesign = AppDesign.apply
 
   val importTweets: Command[IO[ExitCode]] =
@@ -40,7 +39,13 @@ class Commands(
     ) {
       import design._
       Opts {
-        design.server.compile.use(_ => IO.never) as ExitCode.Success
+        design.server.compile.use { _ =>
+          for {
+            terminate <- MVar[IO](IO.ioConcurrentEffect(contextShift)).empty[Unit]
+            _ <- IO(Signal.handle(new Signal("INT"), _ => terminate.put(()).unsafeRunAsyncAndForget()))
+            _ <- terminate.read
+          } yield ()
+        } as ExitCode.Success
       }
     }
 

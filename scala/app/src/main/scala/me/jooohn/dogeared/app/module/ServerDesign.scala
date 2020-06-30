@@ -22,7 +22,7 @@ trait ServerDesign { self: DSLBase with AdapterDesign with ConfigDesign =>
       logger <- inject[Logger[IO]]
       interpreter <- injectF[GraphQL](
         Resource.liftF[IO, GraphQL](
-          GraphQL.interpreter[IO, zio.ZEnv](
+          GraphQL.interpreter(
             twitterUserQueries = twitterUserQueries,
             kindleQuotedTweetQueries = kindleQuotedTweetQueries,
             kindleBookQueries = kindleBookQueries,

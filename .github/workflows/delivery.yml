@@ -59,8 +59,8 @@ jobs:
         env:
           DB_PORT: ${{ job.services.postgres.ports[5432] }}
           AWS_DYNAMODB_ENDPOINT: http://localhost:${{ job.services.dynamodb.ports[8000] }}
-  deploy:
-    name: Deploy me.jooohn.dogeared.server.jar and CLI image
+  deploy-backend:
+    name: Deploy backend resources
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/ci-deploy'
     needs:
@@ -84,5 +84,36 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: 11
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: ap-northeast-1
       - name: Deploy artifacts
         run: sbt cli/ecr:push
+      - name: Deploy ECS tasks
+        run: aws deploy create-deployment --application-name dog-eared-main --deployment-group dog-eared-main --revision 'revisionType=S3,s3Location={bucket=app-spec.jooohn.me,bundleType=YAML,key=dog-eared/appspec.yml}'
+#   deploy-frontend:
+#     name: Deploy frontend files
+#     runs-on: ubuntu-latest
+#     if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/ci-deploy'
+#     needs:
+#       - deploy-backend
+#     defaults:
+#       run:
+#         working-directory: frontend
+#     steps:
+#       - uses: actions/checkout@v2
+#       - name: Cache ~/.yarn-cache
+#         uses: actions/cache@v1
+#         with:
+#           path: ~/.yarn-cache
+#           key: ${{ runner.os }}-yarn
+#       - name: Cache node_modules
+#         uses: actions/cache@v1
+#         with:
+#           path: ~/.yarn-cache
+#           key: ${{ runner.os }}-yarn
+#       - name: Set up AWS CLI
+#         uses: aws-actions/configure-aws-credentials@v1
+#         with:
+#           aws-region: ap-northeast-1
