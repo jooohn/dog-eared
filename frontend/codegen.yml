@@ -1,4 +1,4 @@
-schema: http://localhost:8080/graphql
+schema: ${REACT_APP_GRAPHQL_URI}
 documents: ./src/**/*.graphql
 generates:
   introspection.json:

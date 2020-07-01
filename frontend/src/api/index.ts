@@ -1,12 +1,13 @@
 import { QueryResult } from '@apollo/react-common';
 import { ApolloError } from 'apollo-client';
 import {
-  GetUserAndBooksQuery, GetUserAndBooksQueryVariables,
-  GetUserBookQuotesQuery, GetUserBookQuotesQueryVariables,
+  GetUserAndBooksQuery,
+  GetUserAndBooksQueryVariables,
+  GetUserBookQuotesQuery,
+  GetUserBookQuotesQueryVariables,
   useGetUserAndBooksQuery,
   useGetUserBookQuotesQuery
 } from '../generated/types';
-import { BookId, UserId } from '../types';
 
 type Result<Query> =
   | { type: 'LOADING', data: Query | undefined }

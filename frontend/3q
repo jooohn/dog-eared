@@ -28,7 +28,7 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "deploy": "aws s3 sync ./build/static s3://${CDN_ORIGIN_S3_BUCKET}/static --cache-control max-age=31536000 && aws s3 sync ./build s3://${CDN_ORIGIN_S3_BUCKET}/ --exclude './build/static/*'",
+    "deploy": "aws s3 sync ./build/static s3://${S3_BUCKET}/static --cache-control max-age=31536000",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "generate": "graphql-codegen"
