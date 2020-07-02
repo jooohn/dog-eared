@@ -1,22 +1,26 @@
 package me.jooohn.dogeared.graphql
 
-import cats.MonadError
+import caliban.CalibanError
 import cats.effect.IO
 import cats.syntax.all._
 import me.jooohn.dogeared.domain.{KindleBook, KindleQuotedTweet, TwitterUser}
 import me.jooohn.dogeared.drivenports.{KindleBookQueries, KindleQuotedTweetQueries, TwitterUserQueries}
+import me.jooohn.dogeared.usecases.{EnsureTwitterUserExistence, ImportKindleBookQuotesForUser}
 
-class Resolvers(
+case class Resolvers(
     twitterUserQueries: TwitterUserQueries[IO],
     kindleQuotedTweetQueries: KindleQuotedTweetQueries[IO],
     kindleBookQueries: KindleBookQueries[IO],
-) {
-  def userById(id: Id): IO[Option[User]] = twitterUserQueries.resolveByUsername(id.value).map(_.map(_.toUser))
-  def bookById(id: Id): IO[Option[Book]] = kindleBookQueries.resolve(id.value).map(_.map(_.toBook))
+    importKindleBookQuotesForUser: ImportKindleBookQuotesForUser[IO]
+) extends ResolversOps {
 
-  lazy val queries: Queries = Queries(
-    user = userById,
-    book = bookById,
+  val queries: Queries = Queries(
+    user = id => twitterUserQueries.resolveByUsername(id.asTwitterUsername).map(_.map(_.toUser)),
+    book = id => kindleBookQueries.resolve(id.value).map(_.map(_.toBook)),
+  )
+
+  val mutations: Mutations = Mutations(
+    importKindleBookQuotes = request => importKindleBookQuotesForUser(request.twitterUserId.asTwitterUserId).handleLeft
   )
 
   implicit class TwitterUserOps(twitterUser: TwitterUser) {
@@ -64,4 +68,30 @@ class Resolvers(
     )
 
   }
+}
+
+trait ResolversOps {
+  trait ToCalibanError[A] {
+
+    def toCalibanError(value: A): CalibanError
+
+  }
+
+  implicit class IOEitherOps[A, B](io: IO[Either[A, B]]) {
+
+    def handleLeft(implicit T: ToCalibanError[A]): IO[B] = io flatMap {
+      case Left(a)  => IO.raiseError(T.toCalibanError(a))
+      case Right(b) => IO.pure(b)
+    }
+
+  }
+
+  implicit val importKindleBookQuotesForUserErrorToCalibanError: ToCalibanError[ImportKindleBookQuotesForUser.Error] = {
+    case EnsureTwitterUserExistence.UserNotFound(id) =>
+      CalibanError.ValidationError(
+        msg = "USER_NOT_FOUND",
+        explanatoryText = s"twitter user ${id} was not found"
+      )
+  }
+
 }
