@@ -5,10 +5,9 @@ import java.util.UUID
 
 import cats.effect.IO
 import cats.implicits._
-import io.chrisdavenport.log4cats.slf4j.Slf4jLogger
 import me.jooohn.dogeared.domain.{AmazonRedirectorURL, Tweet, TwitterUser}
 import me.jooohn.dogeared.drivenadapters.dynamodb._
-import me.jooohn.dogeared.drivenadapters.{InMemoryKindleQuotePages, InMemoryTwitter, PGTwitterUsers}
+import me.jooohn.dogeared.drivenadapters.{InMemoryKindleQuotePages, InMemoryTwitter, ScalaLoggingLogger}
 import me.jooohn.dogeared.drivenports.KindleQuotePage
 
 class ImportKindleBookQuotesForTwitterUserSuite extends munit.FunSuite with DynamoDBFixtures {
@@ -26,7 +25,7 @@ class ImportKindleBookQuotesForTwitterUserSuite extends munit.FunSuite with Dyna
         tweets = Tweet(testUserId, testUser.id, testAmazonURL) :: Nil,
         twitterUsers = testUser :: Nil,
       )
-    val logger = Slf4jLogger.getLogger[IO]
+    val logger = ScalaLoggingLogger.of("test")
     val processedTweets = new DynamoProcessedTweets[IO](scanamoFixture(), logger, Shard.size(1))
 
     val useCase = new ImportKindleBookQuotesForUser[IO](

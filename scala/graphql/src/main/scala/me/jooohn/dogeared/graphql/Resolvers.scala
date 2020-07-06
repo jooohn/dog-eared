@@ -1,31 +1,30 @@
 package me.jooohn.dogeared.graphql
 
 import caliban.CalibanError
-import cats.effect.IO
-import cats.syntax.all._
 import me.jooohn.dogeared.domain.{KindleBook, KindleQuotedTweet, TwitterUser}
 import me.jooohn.dogeared.drivenports.{KindleBookQueries, KindleQuotedTweetQueries, TwitterUserQueries}
 import me.jooohn.dogeared.usecases.{EnsureTwitterUserExistence, ImportKindleBookQuotesForUser}
+import zio.{Has, RIO, ZIO}
 
-case class Resolvers(
-    twitterUserQueries: TwitterUserQueries[IO],
-    kindleQuotedTweetQueries: KindleQuotedTweetQueries[IO],
-    kindleBookQueries: KindleBookQueries[IO],
-    importKindleBookQuotesForUser: ImportKindleBookQuotesForUser[IO]
-) extends ResolversOps {
+case class Resolvers[R <: Has[_]](
+    twitterUserQueries: TwitterUserQueries[RIO[R, *]],
+    kindleQuotedTweetQueries: KindleQuotedTweetQueries[RIO[R, *]],
+    kindleBookQueries: KindleBookQueries[RIO[R, *]],
+    importKindleBookQuotesForUser: ImportKindleBookQuotesForUser[RIO[R, *]]
+) extends ResolversOps[R] {
 
-  val queries: Queries = Queries(
+  val queries: Queries[Effect] = Queries(
     user = id => twitterUserQueries.resolveByUsername(id.asTwitterUsername).map(_.map(_.toUser)),
     book = id => kindleBookQueries.resolve(id.value).map(_.map(_.toBook)),
   )
 
-  val mutations: Mutations = Mutations(
+  val mutations: Mutations[Effect] = Mutations(
     importKindleBookQuotes = request => importKindleBookQuotesForUser(request.twitterUserId.asTwitterUserId).handleLeft
   )
 
   implicit class TwitterUserOps(twitterUser: TwitterUser) {
 
-    def toUser: User = User(
+    def toUser: User[Effect] = User(
       id = Id(twitterUser.id),
       username = Id(twitterUser.username),
       books = kindleBookQueries.resolveByUserId(twitterUser.id).map(_.map(_.toBook)),
@@ -38,7 +37,7 @@ case class Resolvers(
 
   implicit class KindleBookOps(kindleBook: KindleBook) {
 
-    def toBook: Book = Book(
+    def toBook: Book[Effect] = Book(
       id = Id(kindleBook.id),
       title = kindleBook.title,
       url = kindleBook.url.toString,
@@ -52,37 +51,30 @@ case class Resolvers(
 
   implicit class KindleQuotedTweetOps(kindleQuotedTweet: KindleQuotedTweet) {
 
-    def toQuote: Quote = Quote(
+    def toQuote: Quote[Effect] = Quote(
       tweetId = Id(kindleQuotedTweet.tweetId),
       url = kindleQuotedTweet.quote.url.toString,
       body = kindleQuotedTweet.quote.body,
-      user = twitterUserQueries
-        .resolve(kindleQuotedTweet.twitterUserId)
-        .flatMap(_.fold(IO.raiseError[User](
-          new RuntimeException(s"user(${kindleQuotedTweet.twitterUserId}) could not be found.")))(_.toUser.pure[IO])),
-      book = kindleBookQueries
-        .resolve(kindleQuotedTweet.bookId)
-        .flatMap(
-          _.fold(IO.raiseError[Book](new RuntimeException(s"book(${kindleQuotedTweet.bookId}) could not be found.")))(
-            _.toBook.pure[IO]))
+      user = twitterUserQueries.resolve(kindleQuotedTweet.twitterUserId) flatMap {
+        case Some(twitterUser) => twitterUser.toUser.pure
+        case None              => new RuntimeException(s"user(${kindleQuotedTweet.twitterUserId}) doesn't exist.").raiseError
+      },
+      book = kindleBookQueries.resolve(kindleQuotedTweet.bookId) flatMap {
+        case Some(kindleBook) => kindleBook.toBook.pure
+        case None =>
+          new RuntimeException(s"book(${kindleQuotedTweet.bookId}) doesn't exist.").raiseError
+      },
     )
 
   }
 }
 
-trait ResolversOps {
+trait ResolversOps[R] {
+  type Effect[A] = RIO[EnvWith[R], A]
+
   trait ToCalibanError[A] {
 
     def toCalibanError(value: A): CalibanError
-
-  }
-
-  implicit class IOEitherOps[A, B](io: IO[Either[A, B]]) {
-
-    def handleLeft(implicit T: ToCalibanError[A]): IO[B] = io flatMap {
-      case Left(a)  => IO.raiseError(T.toCalibanError(a))
-      case Right(b) => IO.pure(b)
-    }
 
   }
 
@@ -94,4 +86,20 @@ trait ResolversOps {
       )
   }
 
+  implicit class EffectEitherOps[A, B](fab: Effect[Either[A, B]]) {
+
+    def handleLeft(implicit T: ToCalibanError[A]): Effect[B] = fab flatMap {
+      case Left(a)  => T.toCalibanError(a).raiseError
+      case Right(b) => b.pure
+    }
+
+  }
+
+  implicit class AnyOps[A](a: A) {
+    def pure: Effect[A] = RIO(a)
+  }
+
+  implicit class ThrowableOps[R](t: Throwable) {
+    def raiseError[A]: Effect[A] = ZIO.fail(t)
+  }
 }

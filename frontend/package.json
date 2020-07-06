@@ -23,7 +23,7 @@
     "react-scripts": "3.4.1",
     "react-twitter-widgets": "^1.9.5",
     "theme-ui": "^0.3.1",
-    "typescript": "~3.7.2"
+    "typescript": "~3.9.5"
   },
   "scripts": {
     "start": "react-scripts start",

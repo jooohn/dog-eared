@@ -3,10 +3,10 @@ package me.jooohn.dogeared.drivenadapters.dynamodb
 import java.net.URL
 
 import cats.MonadError
+import cats.effect.Sync
 import cats.implicits._
-import io.chrisdavenport.log4cats.Logger
 import me.jooohn.dogeared.domain.{KindleBook, KindleBookId, TwitterUserId}
-import me.jooohn.dogeared.drivenports.{KindleBookQueries, KindleBooks}
+import me.jooohn.dogeared.drivenports.{KindleBookQueries, KindleBooks, Logger}
 import org.scanamo._
 import org.scanamo.syntax._
 import org.scanamo.generic.auto._
@@ -53,10 +53,7 @@ object DynamoKindleBook {
   )
 }
 
-case class DynamoKindleBooks[F[_]: MonadError[*[_], Throwable]](
-    scanamo: ScanamoCats[F],
-    logger: Logger[F],
-    shardSize: Shard.Size)
+case class DynamoKindleBooks[F[_]: Sync](scanamo: ScanamoCats[F], logger: Logger, shardSize: Shard.Size)
     extends KindleBooks[F]
     with KindleBookQueries[F] {
   import DynamoErrorSyntax._

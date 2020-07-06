@@ -11,7 +11,7 @@ case class Id(value: String) {
 }
 object Id {
 
-  implicit val idSchema: Schema[Any, Id] =
+  implicit def idSchema[R]: Schema[R, Id] =
     Schema.scalarSchema("ID", None, id => StringValue(id.value))
 
 }

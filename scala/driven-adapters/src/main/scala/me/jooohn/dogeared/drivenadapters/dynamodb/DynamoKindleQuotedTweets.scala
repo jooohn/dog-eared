@@ -2,14 +2,13 @@ package me.jooohn.dogeared.drivenadapters.dynamodb
 
 import java.net.URL
 
-import cats.{Monad, MonadError}
+import cats.effect.Sync
 import cats.implicits._
-import io.chrisdavenport.log4cats.Logger
-import me.jooohn.dogeared.domain.{KindleBookId, KindleQuote, KindleQuotedTweet, TweetId, TwitterUserId}
-import me.jooohn.dogeared.drivenports.{KindleQuotedTweetQueries, KindleQuotedTweets}
-import org.scanamo.syntax._
+import me.jooohn.dogeared.domain._
+import me.jooohn.dogeared.drivenports.{KindleQuotedTweetQueries, KindleQuotedTweets, Logger}
 import org.scanamo.generic.auto._
 import org.scanamo.ops.ScanamoOps
+import org.scanamo.syntax._
 import org.scanamo.{DynamoReadError, ScanamoCats, SecondaryIndex, Table}
 
 import scala.util.Try
@@ -73,11 +72,11 @@ object DynamoKindleQuotedTweet {
 
 }
 
-case class DynamoKindleQuotedTweets[F[_]: MonadError[*[_], Throwable]](scanamo: ScanamoCats[F], logger: Logger[F])
+case class DynamoKindleQuotedTweets[F[_]: Sync](scanamo: ScanamoCats[F], logger: Logger)
     extends KindleQuotedTweets[F]
     with KindleQuotedTweetQueries[F] {
-  import DynamoKindleQuotedTweet._
   import DynamoErrorSyntax._
+  import DynamoKindleQuotedTweet._
 
   override def storeMany(kindleQuotedTweets: List[KindleQuotedTweet]): F[Unit] =
     for {

@@ -1,10 +1,9 @@
 package me.jooohn.dogeared.drivenadapters.dynamodb
 
-import cats.Monad
+import cats.effect.Sync
 import cats.implicits._
-import io.chrisdavenport.log4cats.Logger
 import me.jooohn.dogeared.domain.{KindleBookId, TwitterUserId}
-import me.jooohn.dogeared.drivenports.{UserKindleBook, UserKindleBooks}
+import me.jooohn.dogeared.drivenports.{Logger, UserKindleBook, UserKindleBooks}
 import org.scanamo.generic.auto._
 import org.scanamo.ops.ScanamoOps
 import org.scanamo.syntax._
@@ -36,7 +35,7 @@ object DynamoUserKindleBook {
   def queryByUserIdOp(twitterUserId: TwitterUserId): ScanamoOps[List[Either[DynamoReadError, DynamoUserKindleBook]]] =
     table.query("primaryKey" -> primaryKey(twitterUserId) and ("sortKey" beginsWith sortKeyPrefix))
 }
-case class DynamoUserKindleBooks[F[_]: Monad](scanamo: ScanamoCats[F], logger: Logger[F]) extends UserKindleBooks[F] {
+case class DynamoUserKindleBooks[F[_]: Sync](scanamo: ScanamoCats[F], logger: Logger) extends UserKindleBooks[F] {
   import DynamoUserKindleBook._
 
   override def storeMany(userKindleBooks: List[UserKindleBook]): F[Unit] =

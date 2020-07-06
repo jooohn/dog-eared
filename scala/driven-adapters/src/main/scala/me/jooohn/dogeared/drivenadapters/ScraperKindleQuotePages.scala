@@ -1,10 +1,9 @@
 package me.jooohn.dogeared.drivenadapters
 
 import java.net.URL
-import scala.util.Try
 
 import cats.data.{EitherT, NonEmptyList, ValidatedNel}
-import cats.effect.{IO, Timer}
+import cats.effect.{Sync, Timer}
 import cats.implicits._
 import me.jooohn.dogeared.domain.AmazonRedirectorURL
 import me.jooohn.dogeared.drivenports._
@@ -14,28 +13,29 @@ import org.http4s.util.CaseInsensitiveString
 import org.http4s.{Header, Response, Status, Uri}
 
 import scala.concurrent.duration.FiniteDuration
+import scala.util.Try
 
-class ScraperKindleQuotePages(fetchInterval: FiniteDuration, client: Client[IO])(implicit timer: Timer[IO])
-    extends KindleQuotePages[IO] {
+class ScraperKindleQuotePages[F[_]: Sync](fetchInterval: FiniteDuration, client: Client[F])(implicit timer: Timer[F])
+    extends KindleQuotePages[F] {
 
   override def resolveManyByURLs(urls: List[AmazonRedirectorURL])
-    : IO[Map[AmazonRedirectorURL, Either[KindleQuotePageResolutionError, KindleQuotePage]]] =
+    : F[Map[AmazonRedirectorURL, Either[KindleQuotePageResolutionError, KindleQuotePage]]] =
     urls.distinct.mapWithInterval(fetchKindleQuotePage)
 
   private def fetchKindleQuotePage(
-      amazonRedirectorURL: AmazonRedirectorURL): IO[Either[KindleQuotePageResolutionError, KindleQuotePage]] =
+      amazonRedirectorURL: AmazonRedirectorURL): F[Either[KindleQuotePageResolutionError, KindleQuotePage]] =
     (for {
       originalUri <- EitherT(resolveOriginalUri(amazonRedirectorURL))
       body <- EitherT.liftF(client.expect[String](originalUri))
-      kindleQuotePage <- EitherT.fromEither[IO](ScraperKindleQuotePages.extractKindleQuotePage(originalUri, body))
+      kindleQuotePage <- EitherT.fromEither[F](ScraperKindleQuotePages.extractKindleQuotePage(originalUri, body))
     } yield kindleQuotePage).value
 
   private def resolveOriginalUri(
-      amazonRedirectorURL: AmazonRedirectorURL): IO[Either[KindleQuotePageResolutionError, Uri]] = {
+      amazonRedirectorURL: AmazonRedirectorURL): F[Either[KindleQuotePageResolutionError, Uri]] = {
     val uri = Uri.unsafeFromString(amazonRedirectorURL.url.toString)
     (for {
-      locationHeader <- EitherT(client.get(uri)(_.redirectLocation.pure[IO]))
-      targetUri <- EitherT.fromEither[IO](locationHeader.valueAsTargetPageUri)
+      locationHeader <- EitherT(client.get(uri)(_.redirectLocation.pure[F]))
+      targetUri <- EitherT.fromEither[F](locationHeader.valueAsTargetPageUri)
     } yield targetUri).value
   }
 
@@ -53,7 +53,7 @@ class ScraperKindleQuotePages(fetchInterval: FiniteDuration, client: Client[IO])
 
   }
 
-  implicit class ResponseOps(response: Response[IO]) {
+  implicit class ResponseOps(response: Response[F]) {
 
     def redirectLocation: Either[KindleQuotePageResolutionError, Header] =
       for {
@@ -61,7 +61,7 @@ class ScraperKindleQuotePages(fetchInterval: FiniteDuration, client: Client[IO])
         locationHeader <- findLocationHeader
       } yield locationHeader
 
-    def ensureMovedPermanently: Either[KindleQuotePageResolutionError, Response[IO]] =
+    def ensureMovedPermanently: Either[KindleQuotePageResolutionError, Response[F]] =
       if (response.status == Status.MovedPermanently) Right(response)
       else Left(InvalidRedirectorResponse(response.status.code, response.headers.toList.map(_.toString())))
 
@@ -74,9 +74,9 @@ class ScraperKindleQuotePages(fetchInterval: FiniteDuration, client: Client[IO])
 
   implicit class URLsOps(urls: List[AmazonRedirectorURL]) {
 
-    def mapWithInterval[A](f: AmazonRedirectorURL => IO[A]): IO[Map[AmazonRedirectorURL, A]] =
+    def mapWithInterval[A](f: AmazonRedirectorURL => F[A]): F[Map[AmazonRedirectorURL, A]] =
       urls
-        .traverse(url => (f(url) map (url -> _)) <* IO.sleep(fetchInterval))
+        .traverse(url => (f(url) map (url -> _)) <* timer.sleep(fetchInterval))
         .map(_.toMap)
 
   }

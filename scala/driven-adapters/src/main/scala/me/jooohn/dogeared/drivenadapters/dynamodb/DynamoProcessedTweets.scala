@@ -1,11 +1,10 @@
 package me.jooohn.dogeared.drivenadapters.dynamodb
 
-import cats.MonadError
+import cats.effect.Sync
 import cats.implicits._
-import io.chrisdavenport.log4cats.Logger
 import me.jooohn.dogeared.domain.{TweetId, TwitterUserId}
 import me.jooohn.dogeared.drivenadapters.dynamodb.DynamoErrorSyntax._
-import me.jooohn.dogeared.drivenports.{ProcessedTweet, ProcessedTweets}
+import me.jooohn.dogeared.drivenports.{Logger, ProcessedTweet, ProcessedTweets}
 import org.scanamo.generic.auto._
 import org.scanamo.syntax._
 import org.scanamo.{ScanamoCats, Table}
@@ -37,10 +36,7 @@ object DynamoProcessedTweet {
     )
 }
 
-case class DynamoProcessedTweets[F[_]: MonadError[*[_], Throwable]](
-    scanamo: ScanamoCats[F],
-    logger: Logger[F],
-    shardSize: Shard.Size)
+case class DynamoProcessedTweets[F[_]: Sync](scanamo: ScanamoCats[F], logger: Logger, shardSize: Shard.Size)
     extends ProcessedTweets[F] {
   val table: Table[DynamoProcessedTweet] = Table[DynamoProcessedTweet]("dog-eared-main")
 

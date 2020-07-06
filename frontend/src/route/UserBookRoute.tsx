@@ -18,7 +18,7 @@ export const UserBookRoute: React.FC<{ userId: UserId }> = ({ userId }) => {
             {result.data.book.authors.join(', ')}
           </Text>
           <Grid columns={[1, null, 2, 4]}>
-            {result.data.book.userQuotes.map(userQuote => (
+            {result.data.book?.userQuotes?.map(userQuote => (
               <Box key={userQuote.tweetId}>
                 <LoadableTweet tweetId={userQuote.tweetId}/>
               </Box>

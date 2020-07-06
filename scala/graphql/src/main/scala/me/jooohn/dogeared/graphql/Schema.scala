@@ -1,43 +1,42 @@
 package me.jooohn.dogeared.graphql
 
 import caliban.schema.Annotations.GQLDirective
-import cats.effect.IO
-import Directives.internal
+import me.jooohn.dogeared.graphql.Directives.internal
 
-case class Queries(
-    user: Id => IO[Option[User]],
-    book: Id => IO[Option[Book]],
+case class Queries[F[_]](
+    user: Id => F[Option[User[F]]],
+    book: Id => F[Option[Book[F]]],
 )
 
-case class Mutations(
-    @GQLDirective(internal) importKindleBookQuotes: ImportKindleBookQuotesRequest => IO[Unit]
+case class Mutations[F[_]](
+    @GQLDirective(internal) importKindleBookQuotes: ImportKindleBookQuotesRequest => F[Unit]
 )
 
 case class ImportKindleBookQuotesRequest(
     twitterUserId: Id,
 )
 
-case class User(
+case class User[F[_]](
     id: Id,
     username: Id,
-    books: IO[List[Book]],
-    quotes: IO[List[Quote]],
-    bookQuotes: Id => IO[List[Quote]],
+    books: F[List[Book[F]]],
+    quotes: F[List[Quote[F]]],
+    bookQuotes: Id => F[List[Quote[F]]],
 )
 
-case class Book(
+case class Book[F[_]](
     id: Id,
     title: String,
     url: String,
     authors: List[String],
-    quotes: IO[List[Quote]],
-    userQuotes: Id => IO[List[Quote]],
+    quotes: F[List[Quote[F]]],
+    userQuotes: Id => F[List[Quote[F]]],
 )
 
-case class Quote(
+case class Quote[F[_]](
     tweetId: Id,
     url: String,
     body: String,
-    user: IO[User],
-    book: IO[Book],
+    user: F[User[F]],
+    book: F[Book[F]],
 )

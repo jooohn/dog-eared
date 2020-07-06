@@ -30,7 +30,7 @@ export const UserRoute: React.FC = () => {
           {result.data && (
             result.data.user ? (
               <Flex as='nav' style={{flexDirection: 'column'}}>
-                {result.data.user.books.map(book => {
+                {result.data.user.books?.map(book => {
                   const target = `${url}/books/${book.id}`;
                   return (
                     <Box key={book.id} my={2}>

@@ -3,6 +3,7 @@ import com.amazonaws.regions.{Region, Regions}
 val appName = "dog-eared"
 
 val catsVersion = "2.1.1"
+val catsEffectVersion = "2.1.3"
 val shapelessVersion = "2.3.3"
 val http4sVersion = "0.21.4"
 val doobieVersion = "0.9.0"
@@ -78,7 +79,10 @@ lazy val useCases = (project in file("use-cases"))
 lazy val drivenPorts = (project in file("driven-ports"))
   .settings(commonSettings)
   .settings(
-    name := s"${appName}-driven-ports"
+    name := s"${appName}-driven-ports",
+    libraryDependencies ++= Seq(
+      "org.typelevel" %% "cats-effect" % catsEffectVersion,
+    )
   )
   .dependsOn(domain)
 
@@ -97,7 +101,7 @@ lazy val drivenAdapters = (project in file("driven-adapters"))
       "org.http4s" %% "http4s-blaze-server" % http4sVersion,
       "org.http4s" %% "http4s-blaze-client" % http4sVersion,
       "org.http4s" %% "http4s-circe" % http4sVersion,
-      "io.chrisdavenport" %% "log4cats-slf4j" % "1.1.1",
+      "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2",
     ),
     dependencyOverrides ++= Seq(
       "org.typelevel" %% "cats-core" % catsVersion,

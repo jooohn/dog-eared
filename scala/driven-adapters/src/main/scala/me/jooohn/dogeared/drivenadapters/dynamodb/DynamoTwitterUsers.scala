@@ -1,15 +1,12 @@
 package me.jooohn.dogeared.drivenadapters.dynamodb
 
-import cats.effect.ContextShift
-import cats.free.Free
+import cats.Parallel
+import cats.effect.{ContextShift, Sync}
 import cats.implicits._
-import cats.{MonadError, Parallel}
-import io.chrisdavenport.log4cats.Logger
 import me.jooohn.dogeared.domain.{TwitterUser, TwitterUserId, TwitterUsername}
-import me.jooohn.dogeared.drivenadapters.dynamodb.DynamoTwitterUser.findByShardOp
-import me.jooohn.dogeared.drivenports.{TwitterUserQueries, TwitterUsers}
+import me.jooohn.dogeared.drivenports.{Logger, TwitterUserQueries, TwitterUsers}
 import org.scanamo.generic.auto._
-import org.scanamo.ops.{ScanamoOps, ScanamoOpsA}
+import org.scanamo.ops.ScanamoOps
 import org.scanamo.syntax._
 import org.scanamo.{DynamoReadError, ScanamoCats, SecondaryIndex, Table}
 
@@ -54,14 +51,14 @@ object DynamoTwitterUser {
   )
 }
 
-case class DynamoTwitterUsers[F[_]: ContextShift: MonadError[*[_], Throwable]: Parallel](
+case class DynamoTwitterUsers[F[_]: ContextShift: Sync: Parallel](
     scanamo: ScanamoCats[F],
-    logger: Logger[F],
+    logger: Logger,
     shardSize: Shard.Size)
     extends TwitterUsers[F]
     with TwitterUserQueries[F] {
-  import DynamoTwitterUser._
   import DynamoErrorSyntax._
+  import DynamoTwitterUser._
 
   override def resolve(id: TwitterUserId): F[Option[TwitterUser]] =
     for {
