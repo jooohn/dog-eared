@@ -6,7 +6,7 @@ import cats.implicits._
 import me.jooohn.dogeared.domain._
 import me.jooohn.dogeared.drivenports._
 
-class ImportKindleBookQuotesForUser[F[_]: Monad](
+case class ImportKindleBookQuotesForUser[F[_]: Monad](
     twitter: Twitter[F],
     twitterUsers: TwitterUsers[F],
     userKindleBooks: UserKindleBooks[F],

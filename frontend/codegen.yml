@@ -1,0 +1,14 @@
+schema: ${REACT_APP_GRAPHQL_URI}
+documents: ./src/**/*.graphql
+generates:
+  introspection.json:
+    plugins:
+      - introspection
+  ./src/generated/types.tsx:
+    plugins:
+      - typescript
+      - typescript-operations
+      - typescript-react-apollo
+    config:
+      withHooks: true
+      withHOC: false

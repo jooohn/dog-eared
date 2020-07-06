@@ -1,23 +1,25 @@
 import com.amazonaws.regions.{Region, Regions}
 
-lazy val appName = "dog-eared"
+val appName = "dog-eared"
 
-lazy val catsVersion = "2.1.1"
-lazy val http4sVersion = "0.21.4"
-lazy val doobieVersion = "0.9.0"
-lazy val calibanVersion = "0.8.2"
+val catsVersion = "2.1.1"
+val catsEffectVersion = "2.1.3"
+val shapelessVersion = "2.3.3"
+val http4sVersion = "0.21.4"
+val doobieVersion = "0.9.0"
+val calibanVersion = "0.8.2"
 
-lazy val circeVersion = "0.12.3"
-lazy val circeDependencies = Seq(
+val circeVersion = "0.12.3"
+val circeDependencies = Seq(
   "io.circe" %% "circe-core",
   "io.circe" %% "circe-generic",
   "io.circe" %% "circe-parser",
 ).map(_ % circeVersion)
 
-lazy val dbHost = sys.env.getOrElse("DB_HOST", "localhost")
-lazy val dbPort = sys.env.getOrElse("DB_PORT", "5432")
-lazy val dbUser = sys.env.getOrElse("DB_USER", "postgres")
-lazy val dbPassword = sys.env.getOrElse("DB_PASSWORD", "")
+val dbHost = sys.env.getOrElse("DB_HOST", "localhost")
+val dbPort = sys.env.getOrElse("DB_PORT", "5432")
+val dbUser = sys.env.getOrElse("DB_USER", "postgres")
+val dbPassword = sys.env.getOrElse("DB_PASSWORD", "")
 
 lazy val loggingDependencies = Seq(
   "ch.qos.logback" % "logback-classic" % "1.2.3",
@@ -77,7 +79,10 @@ lazy val useCases = (project in file("use-cases"))
 lazy val drivenPorts = (project in file("driven-ports"))
   .settings(commonSettings)
   .settings(
-    name := s"${appName}-driven-ports"
+    name := s"${appName}-driven-ports",
+    libraryDependencies ++= Seq(
+      "org.typelevel" %% "cats-effect" % catsEffectVersion,
+    )
   )
   .dependsOn(domain)
 
@@ -96,7 +101,7 @@ lazy val drivenAdapters = (project in file("driven-adapters"))
       "org.http4s" %% "http4s-blaze-server" % http4sVersion,
       "org.http4s" %% "http4s-blaze-client" % http4sVersion,
       "org.http4s" %% "http4s-circe" % http4sVersion,
-      "io.chrisdavenport" %% "log4cats-slf4j" % "1.1.1",
+      "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2",
     ),
     dependencyOverrides ++= Seq(
       "org.typelevel" %% "cats-core" % catsVersion,
@@ -111,6 +116,16 @@ lazy val drivenAdapters = (project in file("driven-adapters"))
   .dependsOn(drivenPorts)
   .enablePlugins(FlywayPlugin)
 
+lazy val di = (project in file("di"))
+  .settings(commonSettings)
+  .settings(
+    name := s"${appName}-di",
+    libraryDependencies ++= Seq(
+      "org.scala-lang" % "scala-reflect" % scalaVersion.value,
+      "com.chuusai" %% "shapeless" % shapelessVersion,
+    ),
+  )
+
 lazy val app = (project in file("app"))
   .settings(commonSettings)
   .settings(
@@ -120,7 +135,7 @@ lazy val app = (project in file("app"))
       "software.amazon.awssdk" % "secretsmanager" % "2.13.37",
     )
   )
-  .dependsOn(useCases, drivenPorts, drivenAdapters, server)
+  .dependsOn(useCases, drivenPorts, drivenAdapters, server, di)
 
 lazy val cli = (project in file("cli"))
   .enablePlugins(JavaAppPackaging, DockerPlugin, EcrPlugin)
@@ -137,7 +152,7 @@ lazy val cli = (project in file("cli"))
     daemonUser in Docker := s"${appName}",
     dockerUpdateLatest := true,
     region in Ecr := Region.getRegion(Regions.AP_NORTHEAST_1),
-    repositoryName in Ecr := (packageName in Docker).value,
+    repositoryName in Ecr := appName,
     repositoryTags in Ecr ++= Seq(version.value),
     localDockerImage in Ecr := (packageName in Docker).value + ":" + (version in Docker).value,
     push in Ecr := ((push in Ecr) dependsOn (publishLocal in Docker, login in Ecr)).value,

@@ -1,12 +1,10 @@
 package me.jooohn.dogeared.drivenadapters.dynamodb
 
-import cats.effect.ContextShift
+import cats.Parallel
+import cats.effect.{ContextShift, Sync}
 import cats.implicits._
-import cats.{MonadError, Parallel}
-import io.chrisdavenport.log4cats.Logger
-import me.jooohn.dogeared.domain.{TwitterUser, TwitterUserId}
-import me.jooohn.dogeared.drivenadapters.dynamodb.DynamoTwitterUser.findByShardOp
-import me.jooohn.dogeared.drivenports.{TwitterUserQueries, TwitterUsers}
+import me.jooohn.dogeared.domain.{TwitterUser, TwitterUserId, TwitterUsername}
+import me.jooohn.dogeared.drivenports.{Logger, TwitterUserQueries, TwitterUsers}
 import org.scanamo.generic.auto._
 import org.scanamo.ops.ScanamoOps
 import org.scanamo.syntax._
@@ -25,37 +23,42 @@ case class DynamoTwitterUser(
 object DynamoTwitterUser {
   val table: Table[DynamoTwitterUser] = Table[DynamoTwitterUser]("dog-eared-main")
   val sortKeyData: SecondaryIndex[DynamoTwitterUser] = table.index("sortKeyData")
+  val dataSortKey: SecondaryIndex[DynamoTwitterUser] = table.index("dataSortKey")
 
   def findByUniqueKeyOp(
       twitterUserId: TwitterUserId,
-      shardSize: Int): ScanamoOps[Option[Either[DynamoReadError, DynamoTwitterUser]]] =
+      shardSize: Shard.Size): ScanamoOps[Option[Either[DynamoReadError, DynamoTwitterUser]]] =
     table.get("primaryKey" -> primaryKey(twitterUserId) and "sortKey" -> sortKey(twitterUserId, shardSize))
 
-  def findByShardOp(shard: Int): ScanamoOps[List[Either[DynamoReadError, DynamoTwitterUser]]] =
+  def findByShardOp(shard: Shard.Size): ScanamoOps[List[Either[DynamoReadError, DynamoTwitterUser]]] =
     sortKeyData.query("sortKey" -> sortKeyForShard(shard))
 
+  def findByUsernameOp(
+      twitterUsername: TwitterUsername): ScanamoOps[Option[Either[DynamoReadError, DynamoTwitterUser]]] =
+    dataSortKey.query(("data" -> twitterUsername) and ("sortKey" beginsWith "TWITTER_USER#")).map(_.headOption)
+
   def primaryKey(twitterUserId: TwitterUserId): String = s"TWITTER_USER#${twitterUserId}"
-  def sortKey(twitterUserId: TwitterUserId, shardSize: Int): String =
+  def sortKey(twitterUserId: TwitterUserId, shardSize: Shard.Size): String =
     sortKeyForShard(Shard.determine(twitterUserId, shardSize))
 
-  def sortKeyForShard(shardId: Int): String =
+  def sortKeyForShard(shardId: Shard.Size): String =
     s"TWITTER_USER#${shardId}"
 
-  def from(twitterUser: TwitterUser, shardSize: Int): DynamoTwitterUser = DynamoTwitterUser(
+  def from(twitterUser: TwitterUser, shardSize: Shard.Size): DynamoTwitterUser = DynamoTwitterUser(
     primaryKey = primaryKey(twitterUser.id),
     sortKey = sortKey(twitterUser.id, shardSize),
     data = twitterUser.username,
   )
 }
 
-class DynamoTwitterUsers[F[_]: ContextShift: MonadError[*[_], Throwable]: Parallel](
+case class DynamoTwitterUsers[F[_]: ContextShift: Sync: Parallel](
     scanamo: ScanamoCats[F],
-    logger: Logger[F],
-    shardSize: Int)
+    logger: Logger,
+    shardSize: Shard.Size)
     extends TwitterUsers[F]
     with TwitterUserQueries[F] {
-  import DynamoTwitterUser._
   import DynamoErrorSyntax._
+  import DynamoTwitterUser._
 
   override def resolve(id: TwitterUserId): F[Option[TwitterUser]] =
     for {
@@ -64,11 +67,18 @@ class DynamoTwitterUsers[F[_]: ContextShift: MonadError[*[_], Throwable]: Parall
       _ <- logger.info(twitterUser.toString)
     } yield twitterUser
 
+  override def resolveByUsername(username: TwitterUsername): F[Option[TwitterUser]] =
+    for {
+      _ <- logger.info(s"resolving twitter user by username ${username}")
+      twitterUser <- scanamo.exec(findByUsernameOp(username)).raiseIfError.map(_.map(_.toTwitterUser))
+      _ <- logger.info(twitterUser.toString)
+    } yield twitterUser
+
   override def resolveAll: F[List[TwitterUser]] =
     for {
       _ <- logger.info(s"resolving all twitter users")
       twitterUsers <- (0 until shardSize).toList
-        .parTraverse(shard => scanamo.exec(findByShardOp(shard)).raiseIfError.map(_.map(_.toTwitterUser)))
+        .parTraverse(shard => scanamo.exec(findByShardOp(Shard.size(shard))).raiseIfError.map(_.map(_.toTwitterUser)))
         .map(_.flatten)
     } yield twitterUsers
 

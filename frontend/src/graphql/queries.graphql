@@ -1,0 +1,22 @@
+query GetUserAndBooks($username: ID!) {
+  user(value: $username) {
+    id
+    username
+    books {
+      id
+      title
+    }
+  }
+}
+
+query GetUserBookQuotes($bookId: ID!, $userId: ID!) {
+  book(value: $bookId) {
+    title
+    url
+    authors
+    userQuotes(value: $userId) {
+      tweetId
+      url
+    }
+  }
+}

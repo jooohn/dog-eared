@@ -1,65 +1,105 @@
 package me.jooohn.dogeared.graphql
 
-import cats.MonadError
-import cats.syntax.all._
+import caliban.CalibanError
 import me.jooohn.dogeared.domain.{KindleBook, KindleQuotedTweet, TwitterUser}
 import me.jooohn.dogeared.drivenports.{KindleBookQueries, KindleQuotedTweetQueries, TwitterUserQueries}
+import me.jooohn.dogeared.usecases.{EnsureTwitterUserExistence, ImportKindleBookQuotesForUser}
+import zio.{Has, RIO, ZIO}
 
-class Resolvers[F[_]: MonadError[*[_], Throwable]](
-    twitterUserQueries: TwitterUserQueries[F],
-    kindleQuotedTweetQueries: KindleQuotedTweetQueries[F],
-    kindleBookQueries: KindleBookQueries[F],
-) {
-  val monadError: MonadError[F, Throwable] = MonadError[F, Throwable]
+case class Resolvers[R <: Has[_]](
+    twitterUserQueries: TwitterUserQueries[RIO[R, *]],
+    kindleQuotedTweetQueries: KindleQuotedTweetQueries[RIO[R, *]],
+    kindleBookQueries: KindleBookQueries[RIO[R, *]],
+    importKindleBookQuotesForUser: ImportKindleBookQuotesForUser[RIO[R, *]]
+) extends ResolversOps[R] {
 
-  def userById(id: Id): F[Option[User[F]]] = twitterUserQueries.resolve(id.value).map(_.map(_.toUser))
-  def bookById(id: Id): F[Option[Book[F]]] = kindleBookQueries.resolve(id.value).map(_.map(_.toBook))
+  val queries: Queries[Effect] = Queries(
+    user = id => twitterUserQueries.resolveByUsername(id.asTwitterUsername).map(_.map(_.toUser)),
+    book = id => kindleBookQueries.resolve(id.value).map(_.map(_.toBook)),
+  )
 
-  lazy val queries: Queries[F] = Queries(
-    user = userById,
-    book = bookById,
+  val mutations: Mutations[Effect] = Mutations(
+    importKindleBookQuotes = request => importKindleBookQuotesForUser(request.twitterUserId.asTwitterUserId).handleLeft
   )
 
   implicit class TwitterUserOps(twitterUser: TwitterUser) {
 
-    def toUser: User[F] = User(
+    def toUser: User[Effect] = User(
       id = Id(twitterUser.id),
       username = Id(twitterUser.username),
       books = kindleBookQueries.resolveByUserId(twitterUser.id).map(_.map(_.toBook)),
-      quotes = kindleQuotedTweetQueries.resolveByUserId(twitterUser.id).map(_.map(_.toQuote))
+      quotes = kindleQuotedTweetQueries.resolveByUserId(twitterUser.id).map(_.map(_.toQuote)),
+      bookQuotes =
+        bookId => kindleQuotedTweetQueries.resolveByUserIdAndBookId(twitterUser.id, bookId.value).map(_.map(_.toQuote))
     )
 
   }
 
   implicit class KindleBookOps(kindleBook: KindleBook) {
 
-    def toBook: Book[F] = Book(
+    def toBook: Book[Effect] = Book(
       id = Id(kindleBook.id),
       title = kindleBook.title,
       url = kindleBook.url.toString,
       authors = kindleBook.authors,
       quotes = kindleQuotedTweetQueries.resolveByBookId(kindleBook.id).map(_.map(_.toQuote)),
       userQuotes =
-        id => kindleQuotedTweetQueries.resolveByUserIdAndBookId(id.value, kindleBook.id).map(_.map(_.toQuote))
+        userId => kindleQuotedTweetQueries.resolveByUserIdAndBookId(userId.value, kindleBook.id).map(_.map(_.toQuote))
     )
 
   }
 
   implicit class KindleQuotedTweetOps(kindleQuotedTweet: KindleQuotedTweet) {
 
-    def toQuote: Quote[F] = Quote(
+    def toQuote: Quote[Effect] = Quote(
       tweetId = Id(kindleQuotedTweet.tweetId),
       url = kindleQuotedTweet.quote.url.toString,
       body = kindleQuotedTweet.quote.body,
-      user = twitterUserQueries
-        .resolve(kindleQuotedTweet.twitterUserId)
-        .flatMap(_.fold(monadError.raiseError[User[F]](
-          new RuntimeException(s"user(${kindleQuotedTweet.twitterUserId}) could not be found.")))(_.toUser.pure[F])),
-      book = kindleBookQueries
-        .resolve(kindleQuotedTweet.bookId)
-        .flatMap(_.fold(monadError.raiseError[Book[F]](
-          new RuntimeException(s"book(${kindleQuotedTweet.bookId}) could not be found.")))(_.toBook.pure[F]))
+      user = twitterUserQueries.resolve(kindleQuotedTweet.twitterUserId) flatMap {
+        case Some(twitterUser) => twitterUser.toUser.pure
+        case None              => new RuntimeException(s"user(${kindleQuotedTweet.twitterUserId}) doesn't exist.").raiseError
+      },
+      book = kindleBookQueries.resolve(kindleQuotedTweet.bookId) flatMap {
+        case Some(kindleBook) => kindleBook.toBook.pure
+        case None =>
+          new RuntimeException(s"book(${kindleQuotedTweet.bookId}) doesn't exist.").raiseError
+      },
     )
 
+  }
+}
+
+trait ResolversOps[R] {
+  type Effect[A] = RIO[EnvWith[R], A]
+
+  trait ToCalibanError[A] {
+
+    def toCalibanError(value: A): CalibanError
+
+  }
+
+  implicit val importKindleBookQuotesForUserErrorToCalibanError: ToCalibanError[ImportKindleBookQuotesForUser.Error] = {
+    case EnsureTwitterUserExistence.UserNotFound(id) =>
+      CalibanError.ValidationError(
+        msg = "USER_NOT_FOUND",
+        explanatoryText = s"twitter user ${id} was not found"
+      )
+  }
+
+  implicit class EffectEitherOps[A, B](fab: Effect[Either[A, B]]) {
+
+    def handleLeft(implicit T: ToCalibanError[A]): Effect[B] = fab flatMap {
+      case Left(a)  => T.toCalibanError(a).raiseError
+      case Right(b) => b.pure
+    }
+
+  }
+
+  implicit class AnyOps[A](a: A) {
+    def pure: Effect[A] = RIO(a)
+  }
+
+  implicit class ThrowableOps[R](t: Throwable) {
+    def raiseError[A]: Effect[A] = ZIO.fail(t)
   }
 }

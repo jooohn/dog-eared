@@ -13,7 +13,7 @@ class ShardSuite extends ScalaCheckSuite {
     } yield (string, posNum)
     forAll(gen) {
       case (string, shardSize) =>
-        val shard = Shard.determine(string, shardSize)
+        val shard = Shard.determine(string, Shard.size(shardSize))
         0 <= shard && shard < shardSize
     }
   }

@@ -3,7 +3,7 @@ package me.jooohn
 import cats.effect.{Blocker, ContextShift, IO}
 import doobie.util.ExecutionContexts
 import doobie.util.transactor.Transactor
-import me.jooohn.dogeared.app.{AWSConfig, Config, CrawlerConfig, DBConfig, TwitterConfig}
+import me.jooohn.dogeared.app.{AWSConfig, Config, CrawlerConfig, DBConfig, ServerConfig, TwitterConfig}
 
 package object dogeared {
 
@@ -18,7 +18,8 @@ package object dogeared {
       accessTokenSecret = "dummy",
     ),
     aws = AWSConfig.load[IO].unsafeRunSync(),
-    crawler = CrawlerConfig.load[IO].unsafeRunSync()
+    crawler = CrawlerConfig.load[IO].unsafeRunSync(),
+    server = ServerConfig(8080),
   )
 
   implicit val tx: Transactor.Aux[IO, Unit] = Transactor.fromDriverManager[IO](

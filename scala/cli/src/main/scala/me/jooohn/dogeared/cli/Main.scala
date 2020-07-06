@@ -1,18 +1,20 @@
 package me.jooohn.dogeared.cli
 
-import cats.effect.{ExitCode, IO}
 import com.monovore.decline.Opts
-import com.monovore.decline.effect.CommandIOApp
-import me.jooohn.dogeared.cli.command._
+import me.jooohn.dogeared.app.AppDesign
+import zio.interop.catz._
+import zio.{ExitCode, URIO}
 
 object Main
-    extends CommandIOApp(
+    extends CommandZIOApp(
       name = "dog-eared",
       header = "Dog Eared",
     ) {
-  override def main: Opts[IO[ExitCode]] =
+  override def main: Opts[URIO[zio.ZEnv, ExitCode]] = {
+    val commands = new Commands(AppDesign.apply)
     Opts.subcommands(
-      importTweets,
-      server
-    )
+      commands.importTweets,
+      commands.server,
+    ) map (_.catchAll(e => (URIO(System.err.println(e)) as ExitCode.failure)))
+  }
 }

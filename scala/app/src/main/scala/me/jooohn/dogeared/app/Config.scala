@@ -3,21 +3,27 @@ import java.util.concurrent.TimeUnit
 
 import ciris._
 import cats.implicits._
+import me.jooohn.dogeared.drivenadapters.dynamodb.Shard
 
 import scala.concurrent.duration.{Duration, FiniteDuration}
+
+case class ServerConfig(port: Int)
+object ServerConfig extends ConfigCompanion[ServerConfig] {
+  val configValue: ConfigValue[ServerConfig] = env("PORT").map(_.toInt).default(8080).map(ServerConfig.apply)
+}
 
 case class AWSConfig(
     defaultRegion: String,
     dynamodbEndpoint: Option[String],
-    dynamodbUserShard: Int,
-    dynamodbBookShard: Int,
+    dynamodbUserShard: Shard.Size,
+    dynamodbBookShard: Shard.Size,
 )
 object AWSConfig extends ConfigCompanion[AWSConfig] {
   val configValue: ConfigValue[AWSConfig] = (
     env("AWS_REGION"),
     env("AWS_DYNAMODB_ENDPOINT").option.default(None),
-    env("AWS_DYNAMODB_USER_SHARD").map(_.toInt).default(1),
-    env("AWS_DYNAMODB_BOOK_SHARD").map(_.toInt).default(1),
+    env("AWS_DYNAMODB_USER_SHARD").map(_.toInt).default(1).map(Shard.size),
+    env("AWS_DYNAMODB_BOOK_SHARD").map(_.toInt).default(1).map(Shard.size),
   ).parMapN(AWSConfig.apply)
 }
 
@@ -70,6 +76,7 @@ case class Config(
     db: DBConfig,
     twitter: TwitterConfig,
     crawler: CrawlerConfig,
+    server: ServerConfig,
 )
 object Config extends ConfigCompanion[Config] {
 
@@ -77,7 +84,8 @@ object Config extends ConfigCompanion[Config] {
     AWSConfig.configValue,
     DBConfig.configValue,
     TwitterConfig.configValue,
-    CrawlerConfig.configValue
+    CrawlerConfig.configValue,
+    ServerConfig.configValue,
   ).parMapN(Config.apply)
 
 }

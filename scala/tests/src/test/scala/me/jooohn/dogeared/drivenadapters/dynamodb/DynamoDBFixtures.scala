@@ -3,10 +3,10 @@ package me.jooohn.dogeared.drivenadapters.dynamodb
 import cats.effect.IO
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.services.dynamodbv2.{AmazonDynamoDBAsync, AmazonDynamoDBAsyncClientBuilder}
-import io.chrisdavenport.log4cats.Logger
-import io.chrisdavenport.log4cats.slf4j.Slf4jLogger
-import org.scanamo.ScanamoCats
+import me.jooohn.dogeared.drivenadapters.ScalaLoggingLogger
+import me.jooohn.dogeared.drivenports.Logger
 import me.jooohn.dogeared.testConfig
+import org.scanamo.ScanamoCats
 
 trait DynamoDBFixtures { self: munit.FunSuite =>
   val scanamoFixture = new Fixture[ScanamoCats[IO]]("dynamodb") {
@@ -31,6 +31,6 @@ trait DynamoDBFixtures { self: munit.FunSuite =>
     }
   }
 
-  val ioLogger: Logger[IO] = Slf4jLogger.getLogger[IO]
+  val logger: Logger = ScalaLoggingLogger.of("test")
 
 }

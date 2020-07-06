@@ -3,10 +3,10 @@ package me.jooohn.dogeared.drivenadapters.dynamodb
 import java.net.URL
 
 import cats.MonadError
+import cats.effect.Sync
 import cats.implicits._
-import io.chrisdavenport.log4cats.Logger
 import me.jooohn.dogeared.domain.{KindleBook, KindleBookId, TwitterUserId}
-import me.jooohn.dogeared.drivenports.{KindleBookQueries, KindleBooks}
+import me.jooohn.dogeared.drivenports.{KindleBookQueries, KindleBooks, Logger}
 import org.scanamo._
 import org.scanamo.syntax._
 import org.scanamo.generic.auto._
@@ -37,13 +37,13 @@ object DynamoKindleBook {
   val table: Table[DynamoKindleBook] = Table("dog-eared-main")
   val primaryKeyPrefix: String = "KINDLE_BOOK#"
   def primaryKey(kindleBookId: KindleBookId): String = s"${primaryKeyPrefix}${kindleBookId}"
-  def sortKey(kindleBookId: KindleBookId, shardSize: Int): String =
+  def sortKey(kindleBookId: KindleBookId, shardSize: Shard.Size): String =
     s"KINDLE_BOOK#${Shard.determine(kindleBookId, shardSize)}"
 
-  def findById(id: KindleBookId, shardSize: Int) =
+  def findById(id: KindleBookId, shardSize: Shard.Size) =
     table.get("primaryKey" -> primaryKey(id) and "sortKey" -> sortKey(id, shardSize))
 
-  def from(kindleBook: KindleBook, shardSize: Int): DynamoKindleBook = DynamoKindleBook(
+  def from(kindleBook: KindleBook, shardSize: Shard.Size): DynamoKindleBook = DynamoKindleBook(
     primaryKey = primaryKey(kindleBook.id),
     sortKey = sortKey(kindleBook.id, shardSize),
     data = kindleBook.title,
@@ -53,7 +53,7 @@ object DynamoKindleBook {
   )
 }
 
-class DynamoKindleBooks[F[_]: MonadError[*[_], Throwable]](scanamo: ScanamoCats[F], logger: Logger[F], shardSize: Int)
+case class DynamoKindleBooks[F[_]: Sync](scanamo: ScanamoCats[F], logger: Logger, shardSize: Shard.Size)
     extends KindleBooks[F]
     with KindleBookQueries[F] {
   import DynamoErrorSyntax._

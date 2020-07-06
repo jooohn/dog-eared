@@ -1,11 +1,10 @@
 package me.jooohn.dogeared.drivenadapters.dynamodb
 
-import cats.MonadError
+import cats.effect.Sync
 import cats.implicits._
-import io.chrisdavenport.log4cats.Logger
 import me.jooohn.dogeared.domain.{TweetId, TwitterUserId}
 import me.jooohn.dogeared.drivenadapters.dynamodb.DynamoErrorSyntax._
-import me.jooohn.dogeared.drivenports.{ProcessedTweet, ProcessedTweets}
+import me.jooohn.dogeared.drivenports.{Logger, ProcessedTweet, ProcessedTweets}
 import org.scanamo.generic.auto._
 import org.scanamo.syntax._
 import org.scanamo.{ScanamoCats, Table}
@@ -26,10 +25,10 @@ case class DynamoProcessedTweet(
 object DynamoProcessedTweet {
 
   def primaryKey(twitterUserId: TwitterUserId): String = s"TWITTER_USER#${twitterUserId}"
-  def sortKey(twitterUserId: TwitterUserId, shardSize: Int): String =
+  def sortKey(twitterUserId: TwitterUserId, shardSize: Shard.Size): String =
     s"PROCESSED_TWEET#${Shard.determine(twitterUserId, shardSize)}"
 
-  def from(twitterUserId: TwitterUserId, latestProcessedTweetId: TweetId, shardSize: Int): DynamoProcessedTweet =
+  def from(twitterUserId: TwitterUserId, latestProcessedTweetId: TweetId, shardSize: Shard.Size): DynamoProcessedTweet =
     DynamoProcessedTweet(
       primaryKey = primaryKey(twitterUserId),
       sortKey = sortKey(twitterUserId, shardSize),
@@ -37,10 +36,7 @@ object DynamoProcessedTweet {
     )
 }
 
-class DynamoProcessedTweets[F[_]: MonadError[*[_], Throwable]](
-    scanamo: ScanamoCats[F],
-    logger: Logger[F],
-    shardSize: Int)
+case class DynamoProcessedTweets[F[_]: Sync](scanamo: ScanamoCats[F], logger: Logger, shardSize: Shard.Size)
     extends ProcessedTweets[F] {
   val table: Table[DynamoProcessedTweet] = Table[DynamoProcessedTweet]("dog-eared-main")
 
