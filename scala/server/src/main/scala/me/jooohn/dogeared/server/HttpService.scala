@@ -11,7 +11,7 @@ import me.jooohn.dogeared.graphql._
 import org.http4s.circe.CirceEntityCodec._
 import org.http4s.dsl.Http4sDsl
 import org.http4s.server.Router
-import org.http4s.server.middleware.CORS
+import org.http4s.server.middleware.{CORS, Logger => LoggerMiddleware}
 import org.http4s.syntax.all._
 import org.http4s.util.CaseInsensitiveString
 import org.http4s.{HttpRoutes, Request, Response}
@@ -53,7 +53,7 @@ case class HttpService[R <: Has[_]](
   )
 
   lazy val routes: Kleisli[RIO[R, *], Request[RIO[R, *]], Response[RIO[R, *]]] =
-    (healthCheckRoutes <+> graphQLRoutes).orNotFound
+    LoggerMiddleware.httpApp(logHeaders = true, logBody = false)((healthCheckRoutes <+> graphQLRoutes).orNotFound)
 
   implicit class RequestOps(request: Request[RIO[R, *]]) {
 
