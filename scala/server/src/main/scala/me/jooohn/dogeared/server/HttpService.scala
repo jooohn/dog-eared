@@ -53,7 +53,7 @@ case class HttpService[R <: Has[_]](
   )
 
   lazy val routes: Kleisli[RIO[R, *], Request[RIO[R, *]], Response[RIO[R, *]]] =
-    LoggerMiddleware.httpApp(logHeaders = true, logBody = false)((healthCheckRoutes <+> graphQLRoutes).orNotFound)
+    (healthCheckRoutes <+> LoggerMiddleware.httpRoutes(logHeaders = true, logBody = false)(graphQLRoutes)).orNotFound
 
   implicit class RequestOps(request: Request[RIO[R, *]]) {
 
@@ -65,6 +65,7 @@ case class HttpService[R <: Has[_]](
 
     def requestType: RequestType =
       internalRequestSignature.fold[RequestType](RequestType.External) { signature =>
+        // TODO
         RequestType.Internal
       }
 

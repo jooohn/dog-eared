@@ -26,6 +26,7 @@ trait ServerDesign { self: DSLBase with AdapterDesign with ConfigDesign =>
         builder
           .bindHttp(config.port, "0.0.0.0")
           .withHttpApp(HttpService[Env](interpreter, logger).routes)
+          .withSocketKeepAlive(true)
           .withIdleTimeout(Duration(61, TimeUnit.SECONDS))
           .withResponseHeaderTimeout(Duration(15, TimeUnit.MINUTES))))
       server <- injectF(builder.resource)
