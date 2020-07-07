@@ -94,6 +94,10 @@ jobs:
         id: task-def
         run: |
           aws ecs describe-task-definition --task-definition dog-eared-main --query taskDefinition > task-definition.json
+          pwd
+          ls
+          cat task-definition.json
+        working-directory: .
       - name: Deploy ECS service
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
