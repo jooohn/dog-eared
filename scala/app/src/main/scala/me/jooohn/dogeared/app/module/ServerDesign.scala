@@ -23,13 +23,11 @@ trait ServerDesign { self: DSLBase with AdapterDesign with ConfigDesign =>
         interpreter <- GraphQL(resolvers, logger)
         builder <- Effect.fromFuture(ec => Future.successful(BlazeServerBuilder[Effect](ec)))
       } yield
-        (
-          builder
-            .bindHttp(config.port, "0.0.0.0")
-            .withHttpApp(HttpService[Env](interpreter, logger).routes)
-            .withIdleTimeout(Duration(61, TimeUnit.SECONDS))
-            .withResponseHeaderTimeout(Duration(1, TimeUnit.MINUTES))
-          )))
+        builder
+          .bindHttp(config.port, "0.0.0.0")
+          .withHttpApp(HttpService[Env](interpreter, logger).routes)
+          .withIdleTimeout(Duration(61, TimeUnit.SECONDS))
+          .withResponseHeaderTimeout(Duration(15, TimeUnit.MINUTES))))
       server <- injectF(builder.resource)
     } yield server)
 }
