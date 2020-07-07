@@ -90,8 +90,18 @@ jobs:
           aws-region: ap-northeast-1
       - name: Deploy artifacts
         run: sbt cli/ecr:push
-      - name: Deploy ECS tasks
-        run: aws deploy wait deployment-successful --deployment-id "$(aws deploy create-deployment --application-name dog-eared-main --deployment-group dog-eared-main --revision 'revisionType=S3,s3Location={bucket=app-spec.jooohn.me,bundleType=YAML,key=dog-eared/appspec.yml}' --output text --query 'deploymentId')"
+      - name: Download current task definition
+        id: task-def
+        run: |
+          aws ecs describe-task-definition --task-definition dog-eared-main --query taskDefinition > task-definition.json
+          echo 
+      - name: Deploy ECS service
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          service: dog-eared-main
+          cluster: dog-eared-main
+          wait-for-service-stability: true
   deploy-frontend:
     name: Deploy frontend files
     runs-on: ubuntu-latest
