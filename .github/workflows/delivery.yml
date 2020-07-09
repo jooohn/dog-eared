@@ -4,6 +4,7 @@ env:
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   AWS_REGION: ap-northeast
+  GRAPHQL_URI: https://api.dog-eared.jooohn.me/graphql
 jobs:
   test:
     name: Test
@@ -92,11 +93,7 @@ jobs:
         run: sbt cli/ecr:push
       - name: Download current task definition
         id: task-def
-        run: |
-          aws ecs describe-task-definition --task-definition dog-eared-main --query taskDefinition > task-definition.json
-          pwd
-          ls
-          cat task-definition.json
+        run: aws ecs describe-task-definition --task-definition dog-eared-main --query taskDefinition > task-definition.json
         working-directory: .
       - name: Deploy ECS service
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
@@ -117,7 +114,7 @@ jobs:
     env:
       PUBLIC_URL: https://cdn.dog-eared.jooohn.me
       CDN_ORIGIN_S3_BUCKET: origin.cdn.dog-eared.jooohn.me
-      REACT_APP_GRAPHQL_URI: https://api.dog-eared.jooohn.me/graphql
+      REACT_APP_GRAPHQL_URI: ${GRAPHQL_URI}
     steps:
       - uses: actions/checkout@v2
       - name: Cache ~/.yarn-cache

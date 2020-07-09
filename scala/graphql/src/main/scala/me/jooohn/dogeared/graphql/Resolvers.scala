@@ -16,6 +16,7 @@ case class Resolvers[R <: Has[_]](
   val queries: Queries[Effect] = Queries(
     user = id => twitterUserQueries.resolveByUsername(id.asTwitterUsername).map(_.map(_.toUser)),
     book = id => kindleBookQueries.resolve(id.value).map(_.map(_.toBook)),
+    users = () => twitterUserQueries.resolveAll.map(_.map(_.toUser)),
   )
 
   val mutations: Mutations[Effect] = Mutations(

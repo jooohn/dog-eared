@@ -1,0 +1,11 @@
+schema: ${GRAPHQL_URI}
+documents: ./src/**/*.graphql
+generates:
+  introspection.json:
+    plugins:
+      - introspection
+  ./src/generated/graphql.ts:
+    plugins:
+      - typescript
+      - typescript-operations
+      - typescript-document-nodes
