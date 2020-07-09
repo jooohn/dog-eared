@@ -1,10 +1,12 @@
 name: Delivery
 on: [push]
 env:
+  BASE_DOMAIN_NAME: jooohn.me
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   AWS_REGION: ap-northeast
   GRAPHQL_URI: https://api.dog-eared.jooohn.me/graphql
+  REACT_APP_GRAPHQL_URI: https://api.dog-eared.jooohn.me/graphql
 jobs:
   test:
     name: Test
@@ -60,7 +62,7 @@ jobs:
         env:
           DB_PORT: ${{ job.services.postgres.ports[5432] }}
           AWS_DYNAMODB_ENDPOINT: http://localhost:${{ job.services.dynamodb.ports[8000] }}
-  deploy-backend:
+  deploy-main:
     name: Deploy backend resources
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/ci-deploy'
@@ -102,31 +104,61 @@ jobs:
           service: dog-eared-main
           cluster: dog-eared-main
           wait-for-service-stability: true
-  deploy-frontend:
-    name: Deploy frontend files
+  deploy-serverless:
+    name: Deploy serverless application
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/ci-deploy'
     needs:
-      - deploy-backend
+      - deploy-main
     defaults:
       run:
-        working-directory: frontend
-    env:
-      PUBLIC_URL: https://cdn.dog-eared.jooohn.me
-      CDN_ORIGIN_S3_BUCKET: origin.cdn.dog-eared.jooohn.me
-      REACT_APP_GRAPHQL_URI: ${GRAPHQL_URI}
+        working-directory: serverless
     steps:
       - uses: actions/checkout@v2
       - name: Cache ~/.yarn-cache
         uses: actions/cache@v1
         with:
           path: ~/.yarn-cache
-          key: ${{ runner.os }}-yarn
+          key: ${{ runner.os }}-yarn-serverless
       - name: Cache node_modules
         uses: actions/cache@v1
         with:
+          path: node_modules
+          key: ${{ runner.os }}-node-modules-serverless
+      - name: Set up yarn
+        uses: actions/setup-node@v2-beta
+        with:
+          node-version: '12'
+      - name: Install
+        run: yarn install --frozen-lockfile
+      - name: Generate codes
+        run: yarn generate
+      - name: Deploy
+        run: yarn deploy
+  deploy-frontend:
+    name: Deploy frontend files
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/ci-deploy'
+    needs:
+      - deploy-main
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      PUBLIC_URL: https://cdn.dog-eared.jooohn.me
+      CDN_ORIGIN_S3_BUCKET: origin.cdn.dog-eared.jooohn.me
+    steps:
+      - uses: actions/checkout@v2
+      - name: Cache ~/.yarn-cache
+        uses: actions/cache@v1
+        with:
           path: ~/.yarn-cache
-          key: ${{ runner.os }}-yarn
+          key: ${{ runner.os }}-yarn-frontend
+      - name: Cache node_modules
+        uses: actions/cache@v1
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-modules-frontend
       - name: Set up yarn
         uses: actions/setup-node@v2-beta
         with:
