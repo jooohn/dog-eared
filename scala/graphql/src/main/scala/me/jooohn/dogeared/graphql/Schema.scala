@@ -6,6 +6,7 @@ import me.jooohn.dogeared.graphql.Directives.internal
 case class Queries[F[_]](
     user: Id => F[Option[User[F]]],
     book: Id => F[Option[Book[F]]],
+    @GQLDirective(internal) users: () => F[List[User[F]]],
 )
 
 case class Mutations[F[_]](
