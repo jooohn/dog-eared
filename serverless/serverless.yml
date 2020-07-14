@@ -29,6 +29,17 @@ provider:
   deploymentPrefix: ${self:custom.project}/serverless/
 
 functions:
+  importUser:
+    name: import-user
+    handler: handler.importUser
+    role: "arn:aws:iam::#{AWS::AccountId}:role/import-user"
+    timeout: 15
+    environment:
+      GRAPHQL_URI: ${env:GRAPHQL_URI}
+    tags:
+      Project: ${self:custom.project}
+      Environment: ${self:custom.stage}
+      ManagedBy: serverless
   startQuotedTweetsImport:
     name: start-quoted-tweets-import
     handler: handler.startQuotedTweetsImport

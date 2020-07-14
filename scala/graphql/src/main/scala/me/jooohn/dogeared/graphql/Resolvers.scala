@@ -3,13 +3,14 @@ package me.jooohn.dogeared.graphql
 import caliban.CalibanError
 import me.jooohn.dogeared.domain.{KindleBook, KindleQuotedTweet, TwitterUser}
 import me.jooohn.dogeared.drivenports.{KindleBookQueries, KindleQuotedTweetQueries, TwitterUserQueries}
-import me.jooohn.dogeared.usecases.{EnsureTwitterUserExistence, ImportKindleBookQuotesForUser}
+import me.jooohn.dogeared.usecases.{EnsureTwitterUserExistence, ImportKindleBookQuotesForUser, ImportUser}
 import zio.{Has, RIO, ZIO}
 
 case class Resolvers[R <: Has[_]](
     twitterUserQueries: TwitterUserQueries[RIO[R, *]],
     kindleQuotedTweetQueries: KindleQuotedTweetQueries[RIO[R, *]],
     kindleBookQueries: KindleBookQueries[RIO[R, *]],
+    importUser: ImportUser[RIO[R, *]],
     importKindleBookQuotesForUser: ImportKindleBookQuotesForUser[RIO[R, *]]
 ) extends ResolversOps[R] {
 
@@ -20,6 +21,7 @@ case class Resolvers[R <: Has[_]](
   )
 
   val mutations: Mutations[Effect] = Mutations(
+    importUser = request => importUser(request.identity.value).handleLeft.map(Id.apply),
     importKindleBookQuotes = request => importKindleBookQuotesForUser(request.twitterUserId.asTwitterUserId).handleLeft
   )
 
@@ -81,10 +83,12 @@ trait ResolversOps[R] {
 
   implicit val importKindleBookQuotesForUserErrorToCalibanError: ToCalibanError[ImportKindleBookQuotesForUser.Error] = {
     case EnsureTwitterUserExistence.UserNotFound(id) =>
-      CalibanError.ValidationError(
-        msg = "USER_NOT_FOUND",
-        explanatoryText = s"twitter user ${id} was not found"
-      )
+      CalibanError.ExecutionError(msg = s"user ${id} not found")
+  }
+
+  implicit val importUserErrorToCalibanErro: ToCalibanError[ImportUser.Error] = {
+    case ImportUser.UserNotFound(identity) =>
+      CalibanError.ExecutionError(msg = s"user ${identity} not found")
   }
 
   implicit class EffectEitherOps[A, B](fab: Effect[Either[A, B]]) {

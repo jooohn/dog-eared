@@ -1,7 +1,7 @@
 package me.jooohn.dogeared.drivenadapters
 
 import cats.Monad
-import me.jooohn.dogeared.domain.{Tweet, TweetId, TwitterUser, TwitterUserId}
+import me.jooohn.dogeared.domain.{Tweet, TweetId, TwitterUser, TwitterUserId, TwitterUsername}
 import me.jooohn.dogeared.drivenports.Twitter
 
 case class InMemoryTwitter[F[_]: Monad](
@@ -13,4 +13,7 @@ case class InMemoryTwitter[F[_]: Monad](
 
   override def findUserAccount(twitterUserId: TwitterUserId): F[Option[TwitterUser]] =
     Monad[F].pure(twitterUsers.find(_.id == twitterUserId))
+
+  override def findUserAccountByName(twitterUserName: TwitterUsername): F[Option[TwitterUser]] =
+    Monad[F].pure(twitterUsers.find(_.username == twitterUserName))
 }

@@ -2,6 +2,7 @@ package me.jooohn.dogeared.graphql
 
 import caliban.schema.Annotations.GQLDirective
 import me.jooohn.dogeared.graphql.Directives.internal
+import me.jooohn.dogeared.usecases.ImportUser
 
 case class Queries[F[_]](
     user: Id => F[Option[User[F]]],
@@ -10,7 +11,12 @@ case class Queries[F[_]](
 )
 
 case class Mutations[F[_]](
+    @GQLDirective(internal) importUser: ImportUserRequest => F[Id],
     @GQLDirective(internal) importKindleBookQuotes: ImportKindleBookQuotesRequest => F[Unit]
+)
+
+case class ImportUserRequest(
+    identity: Id,
 )
 
 case class ImportKindleBookQuotesRequest(

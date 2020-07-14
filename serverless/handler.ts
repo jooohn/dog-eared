@@ -1,7 +1,11 @@
-import { ScheduledHandler, SQSHandler } from 'aws-lambda';
+import { Handler, ScheduledHandler, SQSHandler } from 'aws-lambda';
 import 'source-map-support/register';
 import { DogEaredMain } from './src/adapters/dog-eared-main';
 import { SQS } from './src/adapters/sqs';
+
+export const importUser: Handler = async (event, _context) => {
+  console.log(JSON.stringify(event));
+};
 
 export const startQuotedTweetsImport: ScheduledHandler = async (_event, _context) => {
   const dogEaredMain = new DogEaredMain(env('GRAPHQL_URI'));

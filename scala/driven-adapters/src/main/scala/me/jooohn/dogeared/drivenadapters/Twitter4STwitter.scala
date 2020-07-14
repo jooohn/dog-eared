@@ -35,7 +35,16 @@ case class Twitter4STwitter[F[_]: Async: ContextShift](
     concurrentIO(Async.fromFuture(Async[F].delay(restClient.userById(twitterUserId.toLong))) map { data =>
       Some(
         TwitterUser(
-          id = twitterUserId,
+          id = data.data.id_str,
+          username = data.data.screen_name
+        ))
+    })
+
+  override def findUserAccountByName(twitterUserName: TwitterUsername): F[Option[TwitterUser]] =
+    concurrentIO(Async.fromFuture(Async[F].delay(restClient.user(twitterUserName))) map { data =>
+      Some(
+        TwitterUser(
+          id = data.data.id_str,
           username = data.data.screen_name
         ))
     })
@@ -61,4 +70,5 @@ case class Twitter4STwitter[F[_]: Async: ContextShift](
       } yield amazonRedirectorLink).headOption
 
   }
+
 }
