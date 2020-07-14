@@ -24,16 +24,19 @@ case class ImportKindleBookQuotesForUser[F[_]: Monad](
     twitterUsers = twitterUsers,
   )
 
-  def apply(twitterUserId: TwitterUserId): F[Either[Error, Unit]] =
+  def apply(twitterUserId: TwitterUserId, importOption: ImportOption = ImportOption.default): F[Either[Error, Unit]] =
     (for {
       _ <- EitherT(ensureTwitterUserExistence(twitterUserId))
-      _ <- EitherT.right[Error](processNewTweets(twitterUserId)(importKindleBookQuotesFromTweets(twitterUserId)))
+      _ <- EitherT.right[Error](
+        processNewTweets(twitterUserId, importOption)(importKindleBookQuotesFromTweets(twitterUserId)))
     } yield ()).value
 
-  private def processNewTweets(twitterUserId: TwitterUserId)(f: List[Tweet] => F[Unit]): F[Unit] =
+  private def processNewTweets(twitterUserId: TwitterUserId, importOption: ImportOption)(
+      f: List[Tweet] => F[Unit]): F[Unit] =
     for {
-      processedTweet <- processedTweets.resolveByUserId(twitterUserId)
-      newTweets <- twitter.findUserTweets(twitterUserId, processedTweet.map(_.latestProcessedTweetId))
+      since <- if (importOption.forceUpdate) Monad[F].pure(None)
+      else processedTweets.resolveByUserId(twitterUserId).map(_.map(_.latestProcessedTweetId))
+      newTweets <- twitter.findUserTweets(twitterUserId, since = since, count = importOption.count)
       _ <- f(newTweets)
       _ <- newTweets.headOption.fold(Monad[F].unit)(latestTweet =>
         processedTweets.recordLatestProcessedTweetId(twitterUserId, latestTweet.id))
@@ -95,4 +98,12 @@ case class ImportKindleBookQuotesForUser[F[_]: Monad](
 }
 object ImportKindleBookQuotesForUser {
   type Error = EnsureTwitterUserExistence.Error
+
+  case class ImportOption(
+      count: Int,
+      forceUpdate: Boolean,
+  )
+  object ImportOption {
+    val default: ImportOption = ImportOption(count = 1000, forceUpdate = false)
+  }
 }

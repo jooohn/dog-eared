@@ -22,7 +22,13 @@ case class Resolvers[R <: Has[_]](
 
   val mutations: Mutations[Effect] = Mutations(
     importUser = request => importUser(request.identity.value).handleLeft.map(Id.apply),
-    importKindleBookQuotes = request => importKindleBookQuotesForUser(request.twitterUserId.asTwitterUserId).handleLeft
+    importKindleBookQuotes = request =>
+      importKindleBookQuotesForUser(
+        twitterUserId = request.twitterUserId.asTwitterUserId,
+        importOption = ImportKindleBookQuotesForUser.ImportOption.default.copy(
+          forceUpdate = request.forceUpdate.getOrElse(false)
+        )
+      ).handleLeft
   )
 
   implicit class TwitterUserOps(twitterUser: TwitterUser) {

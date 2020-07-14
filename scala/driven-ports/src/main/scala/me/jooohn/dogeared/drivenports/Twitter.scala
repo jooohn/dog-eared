@@ -4,7 +4,7 @@ import me.jooohn.dogeared.domain.{Tweet, TweetId, TwitterUser, TwitterUserId, Tw
 
 trait Twitter[F[_]] {
 
-  def findUserTweets(twitterUserId: TwitterUserId, since: Option[TweetId]): F[List[Tweet]]
+  def findUserTweets(twitterUserId: TwitterUserId, since: Option[TweetId], count: Int = 1000): F[List[Tweet]]
 
   def findUserAccount(twitterUserId: TwitterUserId): F[Option[TwitterUser]]
   def findUserAccountByName(twitterUserName: TwitterUsername): F[Option[TwitterUser]]

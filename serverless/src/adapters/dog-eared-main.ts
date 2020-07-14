@@ -3,8 +3,13 @@ import fetch from 'node-fetch';
 import {
   GetUserIds,
   GetUserIdsQuery,
-  GetUserIdsQueryVariables, ImportKindleBookQuotes,
-  ImportKindleBookQuotesMutation, ImportKindleBookQuotesMutationVariables
+  GetUserIdsQueryVariables,
+  ImportKindleBookQuotes,
+  ImportKindleBookQuotesMutation,
+  ImportKindleBookQuotesMutationVariables,
+  ImportUser,
+  ImportUserMutation,
+  ImportUserMutationVariables
 } from '../generated/graphql';
 
 export class DogEaredMain {
@@ -34,11 +39,23 @@ export class DogEaredMain {
     return result.data.users.map(({ id }) => id);
   }
 
-  async importKindleQuotedTweets(twitterUserId: string): Promise<void> {
+  async importUser(identity: string): Promise<string> {
+    const result = await this.#client.mutate<ImportUserMutation, ImportUserMutationVariables>({
+      mutation: ImportUser,
+      variables: { identity },
+    });
+    if (result.errors) {
+      throw new Error(result.errors.map(e => e.message).join(','));
+    }
+    return result.data.importUser;
+  }
+
+  async importKindleQuotedTweets(twitterUserId: string, options: { forceUpdate: boolean }): Promise<void> {
     const result = await this.#client.mutate<ImportKindleBookQuotesMutation, ImportKindleBookQuotesMutationVariables>({
       mutation: ImportKindleBookQuotes,
       variables: {
         twitterUserId,
+        forceUpdate: options.forceUpdate,
       }
     });
     if (result.errors) {

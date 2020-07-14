@@ -21,6 +21,7 @@ case class ImportUserRequest(
 
 case class ImportKindleBookQuotesRequest(
     twitterUserId: Id,
+    forceUpdate: Option[Boolean],
 )
 
 case class User[F[_]](

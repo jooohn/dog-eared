@@ -1,5 +1,6 @@
 package me.jooohn.dogeared.app.module
 
+import java.net.StandardSocketOptions
 import java.util.concurrent.TimeUnit
 
 import cats.effect.Resource
@@ -28,6 +29,7 @@ trait ServerDesign { self: DSLBase with AdapterDesign with ConfigDesign =>
           .withHttpApp(HttpService[Env](interpreter, logger).routes)
           .withSocketKeepAlive(true)
           .withIdleTimeout(Duration(61, TimeUnit.SECONDS))
+          .withChannelOption(StandardSocketOptions.SO_KEEPALIVE, java.lang.Boolean.TRUE)
           .withResponseHeaderTimeout(Duration(15, TimeUnit.MINUTES))))
       server <- injectF(builder.resource)
     } yield server)
