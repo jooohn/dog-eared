@@ -1,0 +1,3 @@
+mutation ImportKindleBookQuotes($twitterUserId: ID!) {
+    importKindleBookQuotes(twitterUserId: $twitterUserId)
+}

@@ -1,6 +1,11 @@
 import ApolloClient from 'apollo-boost';
 import fetch from 'node-fetch';
-import { GetUserIds, GetUserIdsQuery, GetUserIdsQueryVariables } from '../generated/graphql';
+import {
+  GetUserIds,
+  GetUserIdsQuery,
+  GetUserIdsQueryVariables, ImportKindleBookQuotes,
+  ImportKindleBookQuotesMutation, ImportKindleBookQuotesMutationVariables
+} from '../generated/graphql';
 
 export class DogEaredMain {
 
@@ -27,6 +32,18 @@ export class DogEaredMain {
       throw new Error(result.errors.map(e => e.message).join(','));
     }
     return result.data.users.map(({ id }) => id);
+  }
+
+  async importKindleQuotedTweets(twitterUserId: string): Promise<void> {
+    const result = await this.#client.mutate<ImportKindleBookQuotesMutation, ImportKindleBookQuotesMutationVariables>({
+      mutation: ImportKindleBookQuotes,
+      variables: {
+        twitterUserId,
+      }
+    });
+    if (result.errors) {
+      throw new Error(result.errors.map(e => e.message).join(','));
+    }
   }
 
 }

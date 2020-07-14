@@ -77,6 +77,16 @@ export type UserZioBookQuotesArgs = {
   value: Scalars['ID'];
 };
 
+export type ImportKindleBookQuotesMutationVariables = Exact<{
+  twitterUserId: Scalars['ID'];
+}>;
+
+
+export type ImportKindleBookQuotesMutation = (
+  { __typename?: 'MutationsZIO' }
+  & Pick<MutationsZio, 'importKindleBookQuotes'>
+);
+
 export type GetUserIdsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
@@ -89,6 +99,11 @@ export type GetUserIdsQuery = (
 );
 
 
+export const ImportKindleBookQuotes = gql`
+    mutation ImportKindleBookQuotes($twitterUserId: ID!) {
+  importKindleBookQuotes(twitterUserId: $twitterUserId)
+}
+    `;
 export const GetUserIds = gql`
     query GetUserIds {
   users {
