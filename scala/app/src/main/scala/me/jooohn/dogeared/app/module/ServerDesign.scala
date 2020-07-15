@@ -1,6 +1,5 @@
 package me.jooohn.dogeared.app.module
 
-import java.net.StandardSocketOptions
 import java.util.concurrent.TimeUnit
 
 import cats.effect.Resource
@@ -14,7 +13,7 @@ import org.http4s.server.blaze.BlazeServerBuilder
 import scala.concurrent.Future
 import scala.concurrent.duration.Duration
 
-trait ServerDesign { self: DSLBase with AdapterDesign with ConfigDesign =>
+trait ServerDesign { self: DSLBase with AdapterDesign with ConfigDesign with UseCaseDesign =>
   implicit def server: Bind[Server[Effect]] =
     singleton(for {
       resolvers <- inject[Resolvers[Env]]
@@ -28,9 +27,8 @@ trait ServerDesign { self: DSLBase with AdapterDesign with ConfigDesign =>
           .bindHttp(config.port, "0.0.0.0")
           .withHttpApp(HttpService[Env](interpreter, logger).routes)
           .withSocketKeepAlive(true)
-          .withIdleTimeout(Duration(61, TimeUnit.SECONDS))
-          .withChannelOption(StandardSocketOptions.SO_KEEPALIVE, java.lang.Boolean.TRUE)
-          .withResponseHeaderTimeout(Duration(15, TimeUnit.MINUTES))))
+          .withIdleTimeout(Duration(70, TimeUnit.SECONDS))
+          .withResponseHeaderTimeout(Duration(65, TimeUnit.SECONDS))))
       server <- injectF(builder.resource)
     } yield server)
 }

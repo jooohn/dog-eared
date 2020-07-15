@@ -4,6 +4,8 @@ import cats.effect.{Blocker, ContextShift, IO}
 import doobie.util.ExecutionContexts
 import doobie.util.transactor.Transactor
 import me.jooohn.dogeared.app.{AWSConfig, Config, CrawlerConfig, DBConfig, ServerConfig, TwitterConfig}
+import me.jooohn.dogeared.drivenadapters.ScalaLoggingLogger
+import me.jooohn.dogeared.drivenports.Context
 
 package object dogeared {
 
@@ -28,6 +30,10 @@ package object dogeared {
     testConfig.db.user,
     testConfig.db.password,
     Blocker.liftExecutionContext(ExecutionContexts.synchronous)
+  )
+
+  implicit val testContext: Context = Context(
+    logger = ScalaLoggingLogger.of("test")
   )
 
 }

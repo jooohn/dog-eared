@@ -165,8 +165,9 @@ lazy val tests = (project in file("tests"))
     name := s"${appName}-tests",
     libraryDependencies ++= Seq(
       "org.scalameta" %% "munit" % "0.4.5" % Test,
-      "org.scalameta" %% "munit-scalacheck" % "0.7.7" % Test
-    ),
+      "org.scalameta" %% "munit-scalacheck" % "0.7.7" % Test,
+      "org.typelevel" %% "cats-effect-laws" % catsEffectVersion % Test,
+),
     testFrameworks += new TestFramework("munit.Framework")
   )
   .dependsOn(useCases, drivenAdapters, app, cli)

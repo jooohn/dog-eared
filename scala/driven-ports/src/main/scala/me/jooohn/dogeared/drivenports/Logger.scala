@@ -8,6 +8,6 @@ trait Logger {
   def error[F[_]: Sync](message: => String): F[Unit]
   def error[F[_]: Sync](throwable: Throwable): F[Unit]
 
-  def withContext(mapping: (String, String)*): Logger
+  def withContext(mapping: (String, Any)*): Logger
 
 }

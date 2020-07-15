@@ -100,10 +100,10 @@ object ImportKindleBookQuotesForUser {
   type Error = EnsureTwitterUserExistence.Error
 
   case class ImportOption(
-      count: Int,
-      forceUpdate: Boolean,
+      count: Int = 1000,
+      forceUpdate: Boolean = false,
   )
   object ImportOption {
-    val default: ImportOption = ImportOption(count = 1000, forceUpdate = false)
+    val default: ImportOption = ImportOption()
   }
 }

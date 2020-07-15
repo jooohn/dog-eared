@@ -1,6 +1,6 @@
 package me.jooohn.dogeared.graphql
 
-import me.jooohn.dogeared.drivenports.Logger
+import me.jooohn.dogeared.drivenports.{Context, Logger}
 import zio.{ZIO, ZLayer}
 
 case class GraphQLContext(
@@ -8,6 +8,8 @@ case class GraphQLContext(
     logger: Logger
 ) {
   def isInternalRequest: Boolean = requestType.isInternal
+
+  def toContext: Context = Context(logger = logger)
 }
 
 sealed abstract class RequestType(val isInternal: Boolean)

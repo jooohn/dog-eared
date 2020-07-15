@@ -3,7 +3,12 @@ package me.jooohn.dogeared.graphql
 import caliban.CalibanError
 import me.jooohn.dogeared.domain.{KindleBook, KindleQuotedTweet, TwitterUser}
 import me.jooohn.dogeared.drivenports.{KindleBookQueries, KindleQuotedTweetQueries, TwitterUserQueries}
-import me.jooohn.dogeared.usecases.{EnsureTwitterUserExistence, ImportKindleBookQuotesForUser, ImportUser}
+import me.jooohn.dogeared.usecases.{
+  EnsureTwitterUserExistence,
+  ImportKindleBookQuotesForUser,
+  ImportUser,
+  StartImportKindleBookQuotesForUser
+}
 import zio.{Has, RIO, ZIO}
 
 case class Resolvers[R <: Has[_]](
@@ -11,8 +16,10 @@ case class Resolvers[R <: Has[_]](
     kindleQuotedTweetQueries: KindleQuotedTweetQueries[RIO[R, *]],
     kindleBookQueries: KindleBookQueries[RIO[R, *]],
     importUser: ImportUser[RIO[R, *]],
-    importKindleBookQuotesForUser: ImportKindleBookQuotesForUser[RIO[R, *]]
+    importKindleBookQuotesForUser: ImportKindleBookQuotesForUser[RIO[R, *]],
+    startImportKindleBookQuotesForUser: StartImportKindleBookQuotesForUser[RIO[R, *]],
 ) extends ResolversOps[R] {
+  import GraphQLContextRepository._
 
   val queries: Queries[Effect] = Queries(
     user = id => twitterUserQueries.resolveByUsername(id.asTwitterUsername).map(_.map(_.toUser)),
@@ -25,10 +32,16 @@ case class Resolvers[R <: Has[_]](
     importKindleBookQuotes = request =>
       importKindleBookQuotesForUser(
         twitterUserId = request.twitterUserId.asTwitterUserId,
-        importOption = ImportKindleBookQuotesForUser.ImportOption.default.copy(
-          forceUpdate = request.forceUpdate.getOrElse(false)
-        )
-      ).handleLeft
+        importOption = request.toImportOption,
+      ).handleLeft,
+    startImportKindleBookQuotes = request =>
+      for {
+        graphQLContext <- getGraphQLContext
+        jobId <- startImportKindleBookQuotesForUser(
+          twitterUserId = request.twitterUserId.asTwitterUserId,
+          importOption = request.toImportOption,
+        )(graphQLContext.toContext)
+      } yield Id(jobId)
   )
 
   implicit class TwitterUserOps(twitterUser: TwitterUser) {
