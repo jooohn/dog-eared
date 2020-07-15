@@ -4,12 +4,12 @@ import {
   GetUserIds,
   GetUserIdsQuery,
   GetUserIdsQueryVariables,
-  ImportKindleBookQuotes,
-  ImportKindleBookQuotesMutation,
-  ImportKindleBookQuotesMutationVariables,
   ImportUser,
   ImportUserMutation,
-  ImportUserMutationVariables
+  ImportUserMutationVariables,
+  StartImportKindleBookQuotes,
+  StartImportKindleBookQuotesMutation,
+  StartImportKindleBookQuotesMutationVariables
 } from '../generated/graphql';
 
 export class DogEaredMain {
@@ -50,9 +50,9 @@ export class DogEaredMain {
     return result.data.importUser;
   }
 
-  async importKindleQuotedTweets(twitterUserId: string, options: { forceUpdate: boolean }): Promise<void> {
-    const result = await this.#client.mutate<ImportKindleBookQuotesMutation, ImportKindleBookQuotesMutationVariables>({
-      mutation: ImportKindleBookQuotes,
+  async startImportKindleQuotedTweets(twitterUserId: string, options: { forceUpdate: boolean }): Promise<string> {
+    const result = await this.#client.mutate<StartImportKindleBookQuotesMutation, StartImportKindleBookQuotesMutationVariables>({
+      mutation: StartImportKindleBookQuotes,
       variables: {
         twitterUserId,
         forceUpdate: options.forceUpdate,
@@ -61,6 +61,7 @@ export class DogEaredMain {
     if (result.errors) {
       throw new Error(result.errors.map(e => e.message).join(','));
     }
+    return result.data.startImportKindleBookQuotes;
   }
 
 }

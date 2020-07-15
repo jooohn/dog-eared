@@ -11,7 +11,14 @@ object Job {
   type Id = String
 }
 
-sealed trait JobResult
+sealed trait JobResult {
+
+  def fold[A](onError: String => A, onSuccess: => A): A = this match {
+    case JobSuccess        => onSuccess
+    case JobError(message) => onError(message)
+  }
+
+}
 case object JobSuccess extends JobResult
 case class JobError(message: String) extends JobResult
 

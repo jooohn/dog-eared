@@ -4,7 +4,7 @@ import cats.effect.laws.util.TestContext
 
 trait IOContext extends { self: munit.FunSuite =>
 
-  val testContextFixture = new Fixture[TestContext]("testContext") {
+  val ioContext = new Fixture[TestContext]("testContext") {
     override def apply(): TestContext = TestContext()
   }
 

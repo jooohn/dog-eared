@@ -29,12 +29,19 @@ export type BookZioUserQuotesArgs = {
 export type MutationsZio = {
   __typename?: 'MutationsZIO';
   importUser?: Maybe<Scalars['ID']>;
+  startImportKindleBookQuotes?: Maybe<Scalars['ID']>;
   importKindleBookQuotes?: Maybe<Scalars['Unit']>;
 };
 
 
 export type MutationsZioImportUserArgs = {
   identity: Scalars['ID'];
+};
+
+
+export type MutationsZioStartImportKindleBookQuotesArgs = {
+  twitterUserId: Scalars['ID'];
+  forceUpdate?: Maybe<Scalars['Boolean']>;
 };
 
 
@@ -84,15 +91,15 @@ export type UserZioBookQuotesArgs = {
   value: Scalars['ID'];
 };
 
-export type ImportKindleBookQuotesMutationVariables = Exact<{
+export type StartImportKindleBookQuotesMutationVariables = Exact<{
   twitterUserId: Scalars['ID'];
   forceUpdate: Scalars['Boolean'];
 }>;
 
 
-export type ImportKindleBookQuotesMutation = (
+export type StartImportKindleBookQuotesMutation = (
   { __typename?: 'MutationsZIO' }
-  & Pick<MutationsZio, 'importKindleBookQuotes'>
+  & Pick<MutationsZio, 'startImportKindleBookQuotes'>
 );
 
 export type ImportUserMutationVariables = Exact<{
@@ -117,9 +124,9 @@ export type GetUserIdsQuery = (
 );
 
 
-export const ImportKindleBookQuotes = gql`
-    mutation ImportKindleBookQuotes($twitterUserId: ID!, $forceUpdate: Boolean!) {
-  importKindleBookQuotes(twitterUserId: $twitterUserId, forceUpdate: $forceUpdate)
+export const StartImportKindleBookQuotes = gql`
+    mutation StartImportKindleBookQuotes($twitterUserId: ID!, $forceUpdate: Boolean!) {
+  startImportKindleBookQuotes(twitterUserId: $twitterUserId, forceUpdate: $forceUpdate)
 }
     `;
 export const ImportUser = gql`

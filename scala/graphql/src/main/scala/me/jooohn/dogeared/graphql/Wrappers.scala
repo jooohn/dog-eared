@@ -20,7 +20,7 @@ object Wrappers {
         _ <- ZIO.collectAllPar(response.errors.collect {
           case ExecutionError(_, _, _, Some(throwable), _) =>
             Task.concurrentEffectWith { implicit CE =>
-              CE.liftIO(ConcurrentEffect[F].toIO(logger.error[F](throwable)))
+              CE.liftIO(ConcurrentEffect[F].toIO(logger.error[F](throwable)()))
             } catchAll { t =>
               putStrLn(t.toString)
             }

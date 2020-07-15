@@ -20,6 +20,7 @@ import zio.{Has, RIO}
 case class HttpService[R <: Has[_]](
     interpreter: GraphQLInterpreter[EnvWith[R], CalibanError],
     logger: Logger,
+    baseDomainName: String,
     enableIntrospection: Boolean = true)(implicit CE: ConcurrentEffect[RIO[R, *]])
     extends Http4sDsl[RIO[R, *]] {
   object dsl extends Http4sDsl[RIO[R, *]]
@@ -48,7 +49,7 @@ case class HttpService[R <: Has[_]](
           } yield response
       },
       CORS.DefaultCORSConfig.copy(allowedOrigins = origin =>
-        origin == "localhost" || origin == "jooohn.me" || origin.endsWith(".jooohn.me"))
+        origin == "localhost" || origin == baseDomainName || origin.endsWith(s".${baseDomainName}"))
     )
   )
 

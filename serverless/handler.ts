@@ -38,7 +38,8 @@ export const importQuotedTweets: SQSHandler = async (event, _context) => {
   const dogEaredMain = new DogEaredMain(env('GRAPHQL_URI'));
   await Promise.all(event.Records.map(async record => {
     const { userId, forceUpdate } = JSON.parse(record.body) as ImportQuotedTweetsRequest;
-    await dogEaredMain.importKindleQuotedTweets(userId, { forceUpdate: forceUpdate!! });
+    const jobId = await dogEaredMain.startImportKindleQuotedTweets(userId, { forceUpdate: forceUpdate!! });
+    console.log(`import job ${jobId} enqueued.`);
   }))
 };
 

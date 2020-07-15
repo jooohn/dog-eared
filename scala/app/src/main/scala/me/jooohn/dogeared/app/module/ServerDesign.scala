@@ -25,7 +25,11 @@ trait ServerDesign { self: DSLBase with AdapterDesign with ConfigDesign with Use
       } yield
         builder
           .bindHttp(config.port, "0.0.0.0")
-          .withHttpApp(HttpService[Env](interpreter, logger).routes)
+          .withHttpApp(HttpService[Env](
+            interpreter = interpreter,
+            logger = logger,
+            baseDomainName = config.baseDomainName,
+          ).routes)
           .withSocketKeepAlive(true)
           .withIdleTimeout(Duration(70, TimeUnit.SECONDS))
           .withResponseHeaderTimeout(Duration(65, TimeUnit.SECONDS))))

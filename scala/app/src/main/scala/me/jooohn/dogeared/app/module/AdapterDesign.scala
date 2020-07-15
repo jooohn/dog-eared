@@ -91,7 +91,7 @@ trait AdapterDesign { self: DSLBase with ConfigDesign =>
     singleton(for {
       restClient <- inject[TwitterRestClient]
       processedTweets <- inject[ProcessedTweets[Effect]]
-      concurrentEffect <- injectF(Resource.liftF(Semaphore[Effect](4) map FixedConcurrencyIO[Effect]))
+      concurrentEffect <- injectF(FixedConcurrentExecutor.resource(4))
     } yield Twitter4STwitter(restClient, processedTweets, concurrentEffect))
 
   implicit def kindleQuotePages: Bind[KindleQuotePages[Effect]] =

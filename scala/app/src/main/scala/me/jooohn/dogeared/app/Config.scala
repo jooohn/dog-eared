@@ -7,9 +7,15 @@ import me.jooohn.dogeared.drivenadapters.dynamodb.Shard
 
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
-case class ServerConfig(port: Int)
+case class ServerConfig(
+    port: Int,
+    baseDomainName: String,
+)
 object ServerConfig extends ConfigCompanion[ServerConfig] {
-  val configValue: ConfigValue[ServerConfig] = env("PORT").map(_.toInt).default(8080).map(ServerConfig.apply)
+  val configValue: ConfigValue[ServerConfig] = (
+    env("PORT").as[Int].default(8080),
+    env("BASE_DOMAIN_NAME"),
+  ).parMapN(ServerConfig.apply)
 }
 
 case class AWSConfig(

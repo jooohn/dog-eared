@@ -21,7 +21,7 @@ package object dogeared {
     ),
     aws = AWSConfig.load[IO].unsafeRunSync(),
     crawler = CrawlerConfig.load[IO].unsafeRunSync(),
-    server = ServerConfig(8080),
+    server = ServerConfig(port = 8080, baseDomainName = "example.com"),
   )
 
   implicit val tx: Transactor.Aux[IO, Unit] = Transactor.fromDriverManager[IO](

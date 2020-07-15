@@ -25,7 +25,7 @@ provider:
   environment:
     AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
   deploymentBucket:
-    name: code.${env:PROJECT_DOMAIN_NAME}
+    name: code.${env:BASE_DOMAIN_NAME}
   deploymentPrefix: ${self:custom.project}/serverless/
 
 functions:

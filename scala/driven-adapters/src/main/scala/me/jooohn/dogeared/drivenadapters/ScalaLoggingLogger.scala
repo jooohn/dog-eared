@@ -13,8 +13,8 @@ case class ScalaLoggingLogger(underlying: LoggerTakingImplicit[LoggingContext])(
 
   override def error[F[_]: Sync](message: => String): F[Unit] = delay(underlying.error(message))
 
-  override def error[F[_]: Sync](throwable: Throwable): F[Unit] =
-    delay(underlying.error(throwable.getMessage, throwable))
+  override def error[F[_]: Sync](throwable: Throwable)(message: String = throwable.getMessage): F[Unit] =
+    delay(underlying.error(message, throwable))
 
   def delay[F[_]: Sync](f: => Unit): F[Unit] = Sync[F].delay(f)
 
