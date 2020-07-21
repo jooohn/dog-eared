@@ -1,0 +1,45 @@
+name: nginx-build
+on:
+  push:
+    branches:
+      - master
+      - ci-deploy
+    paths:
+      - 'nginx/**'
+      - '.github/**'
+env:
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_REGION: ap-northeast-1
+jobs:
+  deploy-nginx:
+    name: Deploy nginx
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: nginx
+    env:
+      ECS_CLUSTER: dog-eared-nginx
+      ECS_SERVICE: dog-eared-nginx
+      ECR_REPOSITORY: dog-eared-nginx
+      IMAGE_TAG: latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: ap-northeast-1
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+      - name: Build, tag, and push image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+      - name: Update service
+        run: aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_SERVICE
+      - name: Wait for update complete
+        run: aws ecs wait services-stable --cluster $ECS_CLUSTER --service $ECS_SERVICE
