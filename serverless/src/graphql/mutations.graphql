@@ -1,7 +1,0 @@
-mutation StartImportKindleBookQuotes($twitterUserId: ID!, $forceUpdate: Boolean!) {
-    startImportKindleBookQuotes(twitterUserId: $twitterUserId, forceUpdate: $forceUpdate)
-}
-
-mutation ImportUser($identity: ID!) {
-    importUser(identity: $identity)
-}

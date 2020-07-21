@@ -104,37 +104,6 @@ jobs:
           service: dog-eared-main
           cluster: dog-eared-main
           wait-for-service-stability: true
-  deploy-serverless:
-    name: Deploy serverless application
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/ci-deploy'
-    needs:
-      - deploy-main
-    defaults:
-      run:
-        working-directory: serverless
-    steps:
-      - uses: actions/checkout@v2
-      - name: Cache ~/.yarn-cache
-        uses: actions/cache@v1
-        with:
-          path: ~/.yarn-cache
-          key: ${{ runner.os }}-yarn-serverless
-      - name: Cache node_modules
-        uses: actions/cache@v1
-        with:
-          path: node_modules
-          key: ${{ runner.os }}-node-modules-serverless
-      - name: Set up yarn
-        uses: actions/setup-node@v2-beta
-        with:
-          node-version: '12'
-      - name: Install
-        run: yarn install --frozen-lockfile
-      - name: Generate codes
-        run: yarn generate
-      - name: Deploy
-        run: yarn deploy
   deploy-frontend:
     name: Deploy frontend files
     runs-on: ubuntu-latest
