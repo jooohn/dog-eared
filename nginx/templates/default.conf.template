@@ -6,8 +6,8 @@ server {
 }
 
 server {
-    listen       443 ssl;
-    listen  [::]:443 ssl;
+    listen       ${SSL_PORT} ssl;
+    listen  [::]:${SSL_PORT} ssl;
     server_name  ${SERVER_NAME};
 
     ssl_certificate     /etc/letsencrypt/live/${SERVER_NAME}/fullchain.pem;
