@@ -1,10 +1,11 @@
 package me.jooohn.dogeared.app.module
 
 import akka.actor.ActorSystem
-import cats.effect.Resource
+import cats.effect.{Resource, Timer}
 import cats.effect.concurrent.Semaphore
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.services.dynamodbv2.{AmazonDynamoDBAsync, AmazonDynamoDBAsyncClientBuilder}
+import com.amazonaws.xray.AWSXRayRecorderBuilder
 import com.danielasfregola.twitter4s.TwitterRestClient
 import com.danielasfregola.twitter4s.entities.{AccessToken, ConsumerToken}
 import me.jooohn.dogeared.app.{AWSConfig, CrawlerConfig, TwitterConfig}
@@ -26,6 +27,9 @@ trait AdapterDesign { self: DSLBase with ConfigDesign =>
 
   implicit def ioHttp4sClient: Bind[Client[Effect]] =
     injectF(BlazeClientBuilder[Effect](scala.concurrent.ExecutionContext.Implicits.global).resource).singleton
+
+  implicit def tracer: Bind[XRayTracer[Effect]] =
+    injectF(Resource.liftF(Effect(XRayTracer(AWSXRayRecorderBuilder.defaultRecorder())))).singleton
 
   implicit def scanamo: Bind[ScanamoCats[Effect]] = inject[AmazonDynamoDBAsync].map(ScanamoCats[Effect]).singleton
 

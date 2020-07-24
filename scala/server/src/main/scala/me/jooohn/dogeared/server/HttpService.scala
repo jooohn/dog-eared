@@ -5,8 +5,10 @@ import caliban._
 import cats.data.Kleisli
 import cats.effect.ConcurrentEffect
 import cats.syntax.all._
+import com.amazonaws.xray.entities.TraceHeader
 import io.circe.syntax._
-import me.jooohn.dogeared.drivenports.Logger
+import me.jooohn.dogeared.drivenadapters.{TracingRequest, TracingResponse, XRayTracer}
+import me.jooohn.dogeared.drivenports.{Logger, Tracer}
 import me.jooohn.dogeared.graphql._
 import org.http4s.circe.CirceEntityCodec._
 import org.http4s.dsl.Http4sDsl
@@ -15,23 +17,24 @@ import org.http4s.server.middleware.{CORS, Logger => LoggerMiddleware}
 import org.http4s.syntax.all._
 import org.http4s.util.CaseInsensitiveString
 import org.http4s.{HttpRoutes, Request, Response}
-import zio.{Has, RIO}
 
-case class HttpService[R <: Has[_]](
-    interpreter: GraphQLInterpreter[EnvWith[R], CalibanError],
+case class HttpService(
+    interpreter: GraphQLInterpreter[Env, CalibanError],
     logger: Logger,
     baseDomainName: String,
-    enableIntrospection: Boolean = true)(implicit CE: ConcurrentEffect[RIO[R, *]])
-    extends Http4sDsl[RIO[R, *]] {
-  object dsl extends Http4sDsl[RIO[R, *]]
+    xrayTracer: XRayTracer[Effect],
+    enableIntrospection: Boolean = true)(implicit CE: ConcurrentEffect[Effect])
+    extends Http4sDsl[Effect] {
+  type Service[F[_]] = Kleisli[F, Request[F], Response[F]]
+  object dsl extends Http4sDsl[Effect]
 
-  lazy val healthCheckRoutes: HttpRoutes[RIO[R, *]] = HttpRoutes.of[RIO[R, *]] {
+  lazy val healthCheckRoutes: HttpRoutes[Effect] = HttpRoutes.of[Effect] {
     case GET -> Root / "healthcheck" => Ok("OK")
   }
 
-  lazy val graphQLRoutes: HttpRoutes[RIO[R, *]] = Router(
+  def graphQLRoutes(tracer: Tracer[Effect]): HttpRoutes[Effect] = Router(
     "/graphql" -> CORS(
-      HttpRoutes.of[RIO[R, *]] {
+      HttpRoutes.of[Effect] {
         case req @ POST -> Root =>
           for {
             request <- req.attemptAs[GraphQLRequest].value.absolve
@@ -40,10 +43,17 @@ case class HttpService[R <: Has[_]](
               "query" -> request.query.getOrElse(""),
             )
             _ <- requestLogger.info("processing GraphQL request")
-            result <- interpreter
-              .executeRequest(request, skipValidation = false, enableIntrospection = enableIntrospection)
-              .foldCause(cause => GraphQLResponse(NullValue, cause.defects).asJson, _.asJson)
-              .provideSomeLayer[R](GraphQLContextRepository.from(req.toGraphQLContext(requestLogger)))
+            result <- tracer.span("graphql") {
+              interpreter
+                .executeRequest(request, skipValidation = false, enableIntrospection = enableIntrospection)
+                .foldCause(cause => GraphQLResponse(NullValue, cause.defects).asJson, _.asJson)
+                .provideSomeLayer[zio.ZEnv](
+                  GraphQLContextRepository.from(
+                    req.toGraphQLContext(
+                      tracer = tracer,
+                      logger = requestLogger,
+                    )))
+            }
             _ <- requestLogger.info("GraphQL request processed")
             response <- Ok(result)
           } yield response
@@ -53,14 +63,37 @@ case class HttpService[R <: Has[_]](
     )
   )
 
-  lazy val routes: Kleisli[RIO[R, *], Request[RIO[R, *]], Response[RIO[R, *]]] =
-    (healthCheckRoutes <+> LoggerMiddleware.httpRoutes(logHeaders = true, logBody = false)(graphQLRoutes)).orNotFound
+  def tracerMiddleware(underlying: Tracer[Effect] => Service[Effect]): Service[Effect] =
+    Kleisli { request =>
+      val context = request.headers.get(CaseInsensitiveString("x-amzn-trace-id")) map { header =>
+        TraceHeader.fromString(header.value)
+      }
+      val tracingRequest = TracingRequest.Http(
+        method = request.method.toString(),
+        url = request.uri.toString()
+      )
+      xrayTracer.segment("http4s", tracingRequest, context) { tracer =>
+        underlying(tracer).run(request) map { response =>
+          val tracingResponse = TracingResponse.Http(
+            status = response.status.code
+          )
+          (tracingResponse, response)
+        }
+      }
+    }
 
-  implicit class RequestOps(request: Request[RIO[R, *]]) {
+  lazy val routes: Service[Effect] =
+    tracerMiddleware { segment =>
+      (healthCheckRoutes <+> LoggerMiddleware
+        .httpRoutes(logHeaders = true, logBody = false)(graphQLRoutes(segment))).orNotFound
+    }
 
-    def toGraphQLContext(logger: Logger): GraphQLContext =
+  implicit class RequestOps(request: Request[Effect]) {
+
+    def toGraphQLContext(logger: Logger, tracer: Tracer[Effect]): GraphQLContext =
       GraphQLContext(
         requestType = requestType,
+        tracer = tracer,
         logger = logger,
       )
 
