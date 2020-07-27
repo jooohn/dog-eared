@@ -2,7 +2,8 @@ package me.jooohn.dogeared.graphql
 
 import caliban.CalibanError
 import me.jooohn.dogeared.domain.{KindleBook, KindleQuotedTweet, TwitterUser}
-import me.jooohn.dogeared.drivenports.{KindleBookQueries, KindleQuotedTweetQueries, TwitterUserQueries}
+import me.jooohn.dogeared.drivenports.{Context, KindleBookQueries, KindleQuotedTweetQueries, TwitterUserQueries}
+import me.jooohn.dogeared.graphql.GraphQLContextRepository.getGraphQLContext
 import me.jooohn.dogeared.usecases.{
   EnsureTwitterUserExistence,
   ImportKindleBookQuotesForUser,
@@ -21,27 +22,47 @@ case class Resolvers(
 ) extends ResolversOps {
   import GraphQLContextRepository._
 
+  def withContext[A](f: Context[Effect] => Effect[A]): EffectWithEnv[A] =
+    getGraphQLContext.map(_.toContext).flatMap(f)
+
+  def rootQuery[A](name: String)(f: Context[Effect] => Effect[A]): EffectWithEnv[A] =
+    for {
+      graphQLContext <- getGraphQLContext
+      context = graphQLContext.toContext
+      result <- context.tracer.span(s"query:${name}")(f(graphQLContext.toContext))
+    } yield result
+  def rootMutation[A](name: String)(f: Context[Effect] => Effect[A]): EffectWithEnv[A] =
+    for {
+      graphQLContext <- getGraphQLContext
+      context = graphQLContext.toContext
+      result <- context.tracer.span(s"mutation:${name}")(f(graphQLContext.toContext))
+    } yield result
+
   val queries: Queries[EffectWithEnv] = Queries(
-    user = id => twitterUserQueries.resolveByUsername(id.asTwitterUsername).map(_.map(_.toUser)),
-    book = id => kindleBookQueries.resolve(id.value).map(_.map(_.toBook)),
-    users = () => twitterUserQueries.resolveAll.map(_.map(_.toUser)),
+    user = id =>
+      rootQuery("user")(implicit ctx =>
+        twitterUserQueries.resolveByUsername(id.asTwitterUsername).map(_.map(_.toUser))),
+    book = id => rootQuery("book")(implicit ctx => kindleBookQueries.resolve(id.value).map(_.map(_.toBook))),
+    users = () => rootQuery("users")(implicit ctx => twitterUserQueries.resolveAll.map(_.map(_.toUser))),
   )
 
   val mutations: Mutations[EffectWithEnv] = Mutations(
-    importUser = request => importUser(request.identity.value).handleLeft.map(Id.apply),
+    importUser = request =>
+      rootMutation("importUser")(implicit ctx => importUser(request.identity.value).handleLeft.map(Id.apply)),
     importKindleBookQuotes = request =>
-      importKindleBookQuotesForUser(
-        twitterUserId = request.twitterUserId.asTwitterUserId,
-        importOption = request.toImportOption,
-      ).handleLeft,
+      rootMutation("importKindleBookQuotes")(
+        implicit ctx =>
+          importKindleBookQuotesForUser(
+            twitterUserId = request.twitterUserId.asTwitterUserId,
+            importOption = request.toImportOption,
+          ).handleLeft),
     startImportKindleBookQuotes = request =>
-      for {
-        graphQLContext <- getGraphQLContext
-        jobId <- startImportKindleBookQuotesForUser(
-          twitterUserId = request.twitterUserId.asTwitterUserId,
-          importOption = request.toImportOption,
-        )(graphQLContext.toContext)
-      } yield Id(jobId)
+      rootMutation("startImportKindleBookQuotes")(
+        implicit ctx =>
+          startImportKindleBookQuotesForUser(
+            twitterUserId = request.twitterUserId.asTwitterUserId,
+            importOption = request.toImportOption,
+          ).map(Id.apply))
   )
 
   implicit class TwitterUserOps(twitterUser: TwitterUser) {
@@ -77,10 +98,11 @@ case class Resolvers(
       tweetId = Id(kindleQuotedTweet.tweetId),
       url = kindleQuotedTweet.quote.url.toString,
       body = kindleQuotedTweet.quote.body,
-      user = twitterUserQueries.resolve(kindleQuotedTweet.twitterUserId) flatMap {
-        case Some(twitterUser) => twitterUser.toUser.pure
-        case None              => new RuntimeException(s"user(${kindleQuotedTweet.twitterUserId}) doesn't exist.").raiseError
-      },
+      user = withContext(implicit ctx =>
+        twitterUserQueries.resolve(kindleQuotedTweet.twitterUserId) flatMap {
+          case Some(twitterUser) => twitterUser.toUser.pure
+          case None              => new RuntimeException(s"user(${kindleQuotedTweet.twitterUserId}) doesn't exist.").raiseError
+      }),
       book = kindleBookQueries.resolve(kindleQuotedTweet.bookId) flatMap {
         case Some(kindleBook) => kindleBook.toBook.pure
         case None =>
@@ -92,8 +114,6 @@ case class Resolvers(
 }
 
 trait ResolversOps {
-  type EffectWithEnv[A] = RIO[Env, A]
-
   trait ToCalibanError[A] {
 
     def toCalibanError(value: A): CalibanError
@@ -110,9 +130,9 @@ trait ResolversOps {
       CalibanError.ExecutionError(msg = s"user ${identity} not found")
   }
 
-  implicit class EffectEitherOps[A, B](fab: EffectWithEnv[Either[A, B]]) {
+  implicit class EffectEitherOps[A, B](fab: Effect[Either[A, B]]) {
 
-    def handleLeft(implicit T: ToCalibanError[A]): EffectWithEnv[B] = fab flatMap {
+    def handleLeft(implicit T: ToCalibanError[A]): Effect[B] = fab flatMap {
       case Left(a)  => T.toCalibanError(a).raiseError
       case Right(b) => b.pure
     }
@@ -120,10 +140,10 @@ trait ResolversOps {
   }
 
   implicit class AnyOps[A](a: A) {
-    def pure: EffectWithEnv[A] = RIO(a)
+    def pure: Effect[A] = RIO(a)
   }
 
   implicit class ThrowableOps[R](t: Throwable) {
-    def raiseError[A]: EffectWithEnv[A] = ZIO.fail(t)
+    def raiseError[A]: Effect[A] = ZIO.fail(t)
   }
 }

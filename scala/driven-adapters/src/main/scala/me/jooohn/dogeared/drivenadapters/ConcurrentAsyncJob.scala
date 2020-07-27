@@ -8,7 +8,7 @@ import me.jooohn.dogeared.drivenports.Job.Id
 import me.jooohn.dogeared.drivenports._
 
 case class ConcurrentAsyncJob[F[_]: ConcurrentEffect](concurrentExecutor: ConcurrentExecutor[F]) extends AsyncJob[F] {
-  override def later(job: F[JobResult])(implicit ctx: Context): F[Id] = {
+  override def later(job: F[JobResult])(implicit ctx: Context[F]): F[Id] = {
     val jobId = UUID.randomUUID()
     val jobContext = ctx.withAttributes("jobId" -> jobId)
     concurrentExecutor.async(for {

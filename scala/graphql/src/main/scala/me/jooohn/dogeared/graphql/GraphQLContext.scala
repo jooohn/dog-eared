@@ -10,7 +10,10 @@ case class GraphQLContext(
 ) {
   def isInternalRequest: Boolean = requestType.isInternal
 
-  def toContext: Context = Context(logger = logger)
+  def toContext: Context[Effect] = Context(
+    logger = logger,
+    tracer = tracer,
+  )
 }
 
 sealed abstract class RequestType(val isInternal: Boolean)
@@ -28,6 +31,12 @@ object GraphQLContextRepository {
 
   def getGraphQLContext: ZIO[GraphQLContextRepository, Nothing, GraphQLContext] =
     ZIO.access(_.get.graphQLContext)
+
+  def span[A](name: String)(run: Effect[A]): ZIO[Env, Throwable, A] =
+    for {
+      context <- getGraphQLContext
+      result <- context.tracer.span(name)(run)
+    } yield result
 
   def from(graphQLContext: GraphQLContext): ZLayer[Any, Nothing, GraphQLContextRepository] =
     ZLayer.succeed(new ServiceImpl(graphQLContext))

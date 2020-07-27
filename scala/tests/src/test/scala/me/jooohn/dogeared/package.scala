@@ -5,7 +5,7 @@ import doobie.util.ExecutionContexts
 import doobie.util.transactor.Transactor
 import me.jooohn.dogeared.app.{AWSConfig, Config, CrawlerConfig, DBConfig, ServerConfig, TwitterConfig}
 import me.jooohn.dogeared.drivenadapters.ScalaLoggingLogger
-import me.jooohn.dogeared.drivenports.Context
+import me.jooohn.dogeared.drivenports.{Context, Tracer}
 
 package object dogeared {
 
@@ -32,8 +32,12 @@ package object dogeared {
     Blocker.liftExecutionContext(ExecutionContexts.synchronous)
   )
 
-  implicit val testContext: Context = Context(
-    logger = ScalaLoggingLogger.of("test")
+  implicit val testContext: Context[IO] = Context(
+    logger = ScalaLoggingLogger.of("test"),
+    tracer = TestTracer()
   )
 
+  case class TestTracer() extends Tracer[IO] {
+    override def span[A](name: String)(run: IO[A]): IO[A] = run
+  }
 }

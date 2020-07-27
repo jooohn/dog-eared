@@ -3,7 +3,7 @@ package me.jooohn.dogeared.usecases
 import cats.Monad
 import cats.data.NonEmptyList
 import cats.implicits._
-import me.jooohn.dogeared.drivenports.TwitterUsers
+import me.jooohn.dogeared.drivenports.{Context, TwitterUsers}
 
 case class ImportKindleBookQuotesForAllUsers[F[_]: Monad](
     importKindleBookQuotesForUser: ImportKindleBookQuotesForUser[F],
@@ -11,7 +11,7 @@ case class ImportKindleBookQuotesForAllUsers[F[_]: Monad](
 ) {
   import ImportKindleBookQuotesForAllUsers._
 
-  def apply: F[Either[Error, Unit]] =
+  def apply(implicit ctx: Context[F]): F[Either[Error, Unit]] =
     for {
       users <- twitterUsers.resolveAll
       results <- users.traverse(user => importKindleBookQuotesForUser(user.id))

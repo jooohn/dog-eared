@@ -1,11 +1,9 @@
 package me.jooohn.dogeared.drivenports
 
-import cats.effect.Fiber
-
 case class Job[F[_]](
     id: Job.Id,
     run: F[JobResult],
-    context: Context,
+    context: Context[F],
 )
 object Job {
   type Id = String
@@ -24,6 +22,6 @@ case class JobError(message: String) extends JobResult
 
 trait AsyncJob[F[_]] {
 
-  def later(job: F[JobResult])(implicit ctx: Context): F[Job.Id]
+  def later(job: F[JobResult])(implicit ctx: Context[F]): F[Job.Id]
 
 }

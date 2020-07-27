@@ -12,7 +12,7 @@ case class StartImportKindleBookQuotesForUser[F[_]: Async](
   import EnsureTwitterUserExistence._
 
   def apply(twitterUserId: TwitterUserId, importOption: ImportKindleBookQuotesForUser.ImportOption)(
-      implicit ctx: Context): F[Job.Id] =
+      implicit ctx: Context[F]): F[Job.Id] =
     asyncJob.later(importKindleBookQuotesForUser(twitterUserId, importOption) map {
       case Left(UserNotFound(id)) => JobError(s"twitter user ${id} not found")
       case Right(_)               => JobSuccess

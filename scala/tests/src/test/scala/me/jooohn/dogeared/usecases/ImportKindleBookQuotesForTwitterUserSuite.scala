@@ -41,7 +41,7 @@ class ImportKindleBookQuotesForTwitterUserSuite extends munit.FunSuite with Dyna
             quoteBody = "abc",
           )
         )),
-      twitterUsers = new DynamoTwitterUsers(scanamoFixture(), logger, Shard.size(1)),
+      twitterUsers = new DynamoTwitterUsers(tracingScanamo, Shard.size(1)),
       userKindleBooks = new DynamoUserKindleBooks(scanamoFixture(), logger),
       kindleQuotedTweets = new DynamoKindleQuotedTweets(scanamoFixture(), logger),
       kindleBooks = new DynamoKindleBooks(scanamoFixture(), logger, Shard.size(1)),

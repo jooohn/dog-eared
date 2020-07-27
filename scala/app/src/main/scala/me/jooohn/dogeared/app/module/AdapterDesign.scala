@@ -71,10 +71,10 @@ trait AdapterDesign { self: DSLBase with ConfigDesign =>
 
   implicit def dynamoTwitterUsers: Bind[DynamoTwitterUsers[Effect]] =
     singleton(for {
-      scanamo <- inject[ScanamoCats[Effect]]
+      scanamo <- inject[TracingScanamo[Effect]]
       logger <- inject[Logger]
       awsConfig <- inject[AWSConfig]
-    } yield DynamoTwitterUsers(scanamo, logger, awsConfig.dynamodbUserShard))
+    } yield DynamoTwitterUsers(scanamo, awsConfig.dynamodbUserShard))
   implicit def twitterUsers: Bind[TwitterUsers[Effect]] = dynamoTwitterUsers.widen
   implicit def twitterUserQueries: Bind[TwitterUserQueries[Effect]] = dynamoTwitterUsers.widen
 
