@@ -39,6 +39,8 @@ case class HttpService(
           for {
             request <- req.attemptAs[GraphQLRequest].value.absolve
             requestLogger = logger.withContext(
+              "AWS-XRAY-TRACE-ID" -> tracer.traceId,
+              "AWS-XRA-TRACING" -> s"AWS-XRAY-TRACE-ID: ${tracer.traceId}",
               "graphql_operation" -> request.operationName.getOrElse(""),
               "query" -> request.query.getOrElse(""),
             )
@@ -72,7 +74,7 @@ case class HttpService(
         method = request.method.toString(),
         url = request.uri.toString()
       )
-      xrayTracer.segment("http4s", tracingRequest, context) { tracer =>
+      xrayTracer.segment("dog-eared/main", tracingRequest, context) { tracer =>
         underlying(tracer).run(request) map { response =>
           val tracingResponse = TracingResponse.Http(
             status = response.status.code

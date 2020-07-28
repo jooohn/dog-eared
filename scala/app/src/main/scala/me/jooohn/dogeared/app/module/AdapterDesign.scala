@@ -6,6 +6,8 @@ import cats.effect.concurrent.Semaphore
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.services.dynamodbv2.{AmazonDynamoDBAsync, AmazonDynamoDBAsyncClientBuilder}
 import com.amazonaws.xray.AWSXRayRecorderBuilder
+import com.amazonaws.xray.metrics.MetricsSegmentListener
+import com.amazonaws.xray.plugins.ECSPlugin
 import com.danielasfregola.twitter4s.TwitterRestClient
 import com.danielasfregola.twitter4s.entities.{AccessToken, ConsumerToken}
 import me.jooohn.dogeared.app.{AWSConfig, CrawlerConfig, TwitterConfig}
@@ -29,7 +31,15 @@ trait AdapterDesign { self: DSLBase with ConfigDesign =>
     injectF(BlazeClientBuilder[Effect](scala.concurrent.ExecutionContext.Implicits.global).resource).singleton
 
   implicit def tracer: Bind[XRayTracer[Effect]] =
-    injectF(Resource.liftF(Effect(XRayTracer(AWSXRayRecorderBuilder.defaultRecorder())))).singleton
+    injectF(
+      Resource.liftF(
+        Effect(
+          XRayTracer(
+            AWSXRayRecorderBuilder
+              .standard()
+              .withPlugin(new ECSPlugin())
+              .withSegmentListener(new MetricsSegmentListener())
+              .build())))).singleton
 
   implicit def scanamo: Bind[ScanamoCats[Effect]] = inject[AmazonDynamoDBAsync].map(ScanamoCats[Effect]).singleton
 
@@ -72,7 +82,6 @@ trait AdapterDesign { self: DSLBase with ConfigDesign =>
   implicit def dynamoTwitterUsers: Bind[DynamoTwitterUsers[Effect]] =
     singleton(for {
       scanamo <- inject[TracingScanamo[Effect]]
-      logger <- inject[Logger]
       awsConfig <- inject[AWSConfig]
     } yield DynamoTwitterUsers(scanamo, awsConfig.dynamodbUserShard))
   implicit def twitterUsers: Bind[TwitterUsers[Effect]] = dynamoTwitterUsers.widen

@@ -1,6 +1,11 @@
 <configuration>
   <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
     <encoder class="net.logstash.logback.encoder.LogstashEncoder" />
+<!--    <encoder>-->
+<!--      <pattern>-->
+<!--        %d{HH:mm:ss.SSS} [%t] AWS-XRAY-TRACE-ID: %X{AWS-XRAY-TRACE-ID} %-5p %m%n-->
+<!--      </pattern>-->
+<!--    </encoder>-->
   </appender>
   <root level="info">
     <appender-ref ref="STDOUT" />

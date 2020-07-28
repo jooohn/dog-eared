@@ -39,5 +39,6 @@ package object dogeared {
 
   case class TestTracer() extends Tracer[IO] {
     override def span[A](name: String)(run: IO[A]): IO[A] = run
+    override val traceId: String = "test"
   }
 }

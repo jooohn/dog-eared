@@ -103,6 +103,7 @@ lazy val drivenAdapters = (project in file("driven-adapters"))
       "org.http4s" %% "http4s-circe" % http4sVersion,
       "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2",
       "com.amazonaws" % "aws-xray-recorder-sdk-core" % "2.6.1",
+      "com.amazonaws" % "aws-xray-recorder-sdk-metrics" % "2.6.1",
     ),
     dependencyOverrides ++= Seq(
       "org.typelevel" %% "cats-core" % catsVersion,

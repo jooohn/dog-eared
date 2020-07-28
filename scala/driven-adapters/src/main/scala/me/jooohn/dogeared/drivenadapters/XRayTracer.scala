@@ -40,6 +40,8 @@ case class XRayTracer[F[_]: Sync: ContextShift](recorder: AWSXRayRecorder) {
 
   case class InternalSegment(segment: Segment) extends Tracer[F] {
 
+    override def traceId: String = s"${segment.getTraceId.toString}@${segment.getId}"
+
     def span[A](name: String)(run: F[A]): F[A] =
       F.bracket(eval(recorder.beginSubsegment(name)))(_ => run) { subSegment =>
         eval(recorder.endSubsegment(subSegment))
