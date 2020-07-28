@@ -13,12 +13,12 @@ case class ScalaLoggingLogger(underlying: LoggerTakingImplicit[LoggingContext])(
 
   override def error[F[_]: Sync](message: => String): F[Unit] = delay(underlying.error(message))
 
-  override def error[F[_]: Sync](throwable: Throwable): F[Unit] =
-    delay(underlying.error(throwable.getMessage, throwable))
+  override def error[F[_]: Sync](throwable: Throwable)(message: String = throwable.getMessage): F[Unit] =
+    delay(underlying.error(message, throwable))
 
   def delay[F[_]: Sync](f: => Unit): F[Unit] = Sync[F].delay(f)
 
-  override def withContext(mapping: (String, String)*): Logger = copy()(context.append(mapping: _*))
+  override def withContext(mapping: (String, Any)*): Logger = copy()(context.append(mapping: _*))
 }
 object ScalaLoggingLogger {
 
@@ -26,11 +26,11 @@ object ScalaLoggingLogger {
 
 }
 
-case class LoggingContext(map: Map[String, String]) {
+case class LoggingContext(map: Map[String, Any]) {
 
-  def append(mapping: (String, String)*): LoggingContext = copy(map ++ mapping)
+  def append(mapping: (String, Any)*): LoggingContext = copy(map ++ mapping)
 
-  def foreach(f: (String, String) => Unit): Unit = map.foreach(f.tupled)
+  def foreach(f: (String, Any) => Unit): Unit = map.foreach(f.tupled)
 
 }
 object LoggingContext {
@@ -40,7 +40,7 @@ object LoggingContext {
   implicit val loggingContextCanLog: CanLog[LoggingContext] =
     new CanLog[LoggingContext] {
       override def logMessage(originalMsg: String, a: LoggingContext): String = {
-        a.foreach((key, value) => MDC.put(key, value))
+        a.foreach((key, value) => MDC.put(key, value.toString))
         originalMsg
       }
 

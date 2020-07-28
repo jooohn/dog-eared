@@ -12,13 +12,10 @@ import zio.{IO, RIO}
 
 object GraphQL {
 
-  def apply[R <: Console](
-      resolvers: Resolvers[R],
+  def apply[F[_]](
+      resolvers: Resolvers,
       logger: Logger
-  )(implicit CE: ConcurrentEffect[RIO[R, *]])
-    : IO[CalibanError.ValidationError, GraphQLInterpreter[EnvWith[R], CalibanError]] = {
-    type Env = EnvWith[R]
-    type Effect[A] = RIO[Env, A]
+  )(implicit CE: ConcurrentEffect[Effect]): IO[CalibanError.ValidationError, GraphQLInterpreter[Env, CalibanError]] = {
     object schema extends GenericSchema[Env]
     import schema._
 

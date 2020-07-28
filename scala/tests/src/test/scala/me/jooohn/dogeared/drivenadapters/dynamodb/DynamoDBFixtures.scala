@@ -33,4 +33,6 @@ trait DynamoDBFixtures { self: munit.FunSuite =>
 
   val logger: Logger = ScalaLoggingLogger.of("test")
 
+  def tracingScanamo: TracingScanamo[IO] = TracingScanamo(scanamoFixture())
+
 }

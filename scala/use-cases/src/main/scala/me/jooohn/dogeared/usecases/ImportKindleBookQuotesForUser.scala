@@ -24,52 +24,56 @@ case class ImportKindleBookQuotesForUser[F[_]: Monad](
     twitterUsers = twitterUsers,
   )
 
-  def apply(twitterUserId: TwitterUserId): F[Either[Error, Unit]] =
+  def apply(twitterUserId: TwitterUserId, importOption: ImportOption = ImportOption.default)(
+      implicit ctx: Context[F]): F[Either[Error, Unit]] = {
+
+    def processNewTweets(f: List[Tweet] => F[Unit]): F[Unit] =
+      for {
+        since <- if (importOption.forceUpdate) Monad[F].pure(None)
+        else processedTweets.resolveByUserId(twitterUserId).map(_.map(_.latestProcessedTweetId))
+        newTweets <- twitter.findUserTweets(twitterUserId, since = since, count = importOption.count)
+        _ <- f(newTweets)
+        _ <- newTweets.headOption.fold(Monad[F].unit)(latestTweet =>
+          processedTweets.recordLatestProcessedTweetId(twitterUserId, latestTweet.id))
+      } yield ()
+
+    def importKindleBookQuotesFromTweets(tweets: List[Tweet]): F[Unit] = {
+      def resolveQuotesForTweet(tweets: List[Tweet]): F[Map[TweetId, KindleQuotePage]] =
+        resolveKindleQuotePages(tweets.collectAmazonRedirectorLinkURLs) map {
+          case (resolutionErrorByURL, quotePageByURL) =>
+            resolutionErrorByURL.foreach {
+              case (url, error) =>
+                // TODO: Use sophisticated logging framework
+                println(s"Failed to resolve as KindleQuotePage (url: ${url}, reason: ${error})")
+            }
+            (for {
+              tweet <- tweets
+              quotePage <- quotePageByURL.get(tweet.amazonRedirectorLinkURL)
+            } yield (tweet.id, quotePage)).toMap
+        }
+
+      def resolveKindleQuotePages(urls: List[AmazonRedirectorURL])
+        : F[(Map[AmazonRedirectorURL, KindleQuotePageResolutionError], Map[AmazonRedirectorURL, KindleQuotePage])] =
+        kindleQuotePages.resolveManyByURLs(urls) map { quotePageResolutionByURL =>
+          val (resolutionErrorByURL, quotePageByURL) = quotePageResolutionByURL.toList.partitionEither {
+            case (url, result) => result.bimap((url, _), (url, _))
+          }
+          (resolutionErrorByURL.toMap, quotePageByURL.toMap)
+        }
+
+      for {
+        quotePageForTweet <- resolveQuotesForTweet(tweets)
+        books = quotePageForTweet.collectBooks
+        _ <- kindleBooks.storeMany(books)
+        _ <- userKindleBooks.storeMany(books.map(book => UserKindleBook(twitterUserId, book.id)))
+        _ <- kindleQuotedTweets.storeMany(tweets.collectQuotedTweets(quotePageForTweet))
+      } yield ()
+    }
+
     (for {
       _ <- EitherT(ensureTwitterUserExistence(twitterUserId))
-      _ <- EitherT.right[Error](processNewTweets(twitterUserId)(importKindleBookQuotesFromTweets(twitterUserId)))
+      _ <- EitherT.right[Error](processNewTweets(importKindleBookQuotesFromTweets))
     } yield ()).value
-
-  private def processNewTweets(twitterUserId: TwitterUserId)(f: List[Tweet] => F[Unit]): F[Unit] =
-    for {
-      processedTweet <- processedTweets.resolveByUserId(twitterUserId)
-      newTweets <- twitter.findUserTweets(twitterUserId, processedTweet.map(_.latestProcessedTweetId))
-      _ <- f(newTweets)
-      _ <- newTweets.headOption.fold(Monad[F].unit)(latestTweet =>
-        processedTweets.recordLatestProcessedTweetId(twitterUserId, latestTweet.id))
-    } yield ()
-
-  private def importKindleBookQuotesFromTweets(twitterUserId: TwitterUserId)(tweets: List[Tweet]): F[Unit] = {
-    def resolveQuotesForTweet(tweets: List[Tweet]): F[Map[TweetId, KindleQuotePage]] =
-      resolveKindleQuotePages(tweets.collectAmazonRedirectorLinkURLs) map {
-        case (resolutionErrorByURL, quotePageByURL) =>
-          resolutionErrorByURL.foreach {
-            case (url, error) =>
-              // TODO: Use sophisticated logging framework
-              println(s"Failed to resolve as KindleQuotePage (url: ${url}, reason: ${error})")
-          }
-          (for {
-            tweet <- tweets
-            quotePage <- quotePageByURL.get(tweet.amazonRedirectorLinkURL)
-          } yield (tweet.id, quotePage)).toMap
-      }
-
-    def resolveKindleQuotePages(urls: List[AmazonRedirectorURL])
-      : F[(Map[AmazonRedirectorURL, KindleQuotePageResolutionError], Map[AmazonRedirectorURL, KindleQuotePage])] =
-      kindleQuotePages.resolveManyByURLs(urls) map { quotePageResolutionByURL =>
-        val (resolutionErrorByURL, quotePageByURL) = quotePageResolutionByURL.toList.partitionEither {
-          case (url, result) => result.bimap((url, _), (url, _))
-        }
-        (resolutionErrorByURL.toMap, quotePageByURL.toMap)
-      }
-
-    for {
-      quotePageForTweet <- resolveQuotesForTweet(tweets)
-      books = quotePageForTweet.collectBooks
-      _ <- kindleBooks.storeMany(books)
-      _ <- userKindleBooks.storeMany(books.map(book => UserKindleBook(twitterUserId, book.id)))
-      _ <- kindleQuotedTweets.storeMany(tweets.collectQuotedTweets(quotePageForTweet))
-    } yield ()
   }
 
   implicit class TweetListOps(tweets: List[Tweet]) {
@@ -95,4 +99,12 @@ case class ImportKindleBookQuotesForUser[F[_]: Monad](
 }
 object ImportKindleBookQuotesForUser {
   type Error = EnsureTwitterUserExistence.Error
+
+  case class ImportOption(
+      count: Int = 1000,
+      forceUpdate: Boolean = false,
+  )
+  object ImportOption {
+    val default: ImportOption = ImportOption()
+  }
 }

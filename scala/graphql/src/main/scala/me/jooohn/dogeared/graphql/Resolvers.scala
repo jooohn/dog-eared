@@ -2,30 +2,72 @@ package me.jooohn.dogeared.graphql
 
 import caliban.CalibanError
 import me.jooohn.dogeared.domain.{KindleBook, KindleQuotedTweet, TwitterUser}
-import me.jooohn.dogeared.drivenports.{KindleBookQueries, KindleQuotedTweetQueries, TwitterUserQueries}
-import me.jooohn.dogeared.usecases.{EnsureTwitterUserExistence, ImportKindleBookQuotesForUser}
-import zio.{Has, RIO, ZIO}
+import me.jooohn.dogeared.drivenports.{Context, KindleBookQueries, KindleQuotedTweetQueries, TwitterUserQueries}
+import me.jooohn.dogeared.graphql.GraphQLContextRepository.getGraphQLContext
+import me.jooohn.dogeared.usecases.{
+  EnsureTwitterUserExistence,
+  ImportKindleBookQuotesForUser,
+  ImportUser,
+  StartImportKindleBookQuotesForUser
+}
+import zio.{RIO, ZIO}
 
-case class Resolvers[R <: Has[_]](
-    twitterUserQueries: TwitterUserQueries[RIO[R, *]],
-    kindleQuotedTweetQueries: KindleQuotedTweetQueries[RIO[R, *]],
-    kindleBookQueries: KindleBookQueries[RIO[R, *]],
-    importKindleBookQuotesForUser: ImportKindleBookQuotesForUser[RIO[R, *]]
-) extends ResolversOps[R] {
+case class Resolvers(
+    twitterUserQueries: TwitterUserQueries[Effect],
+    kindleQuotedTweetQueries: KindleQuotedTweetQueries[Effect],
+    kindleBookQueries: KindleBookQueries[Effect],
+    importUser: ImportUser[Effect],
+    importKindleBookQuotesForUser: ImportKindleBookQuotesForUser[Effect],
+    startImportKindleBookQuotesForUser: StartImportKindleBookQuotesForUser[Effect],
+) extends ResolversOps {
+  import GraphQLContextRepository._
 
-  val queries: Queries[Effect] = Queries(
-    user = id => twitterUserQueries.resolveByUsername(id.asTwitterUsername).map(_.map(_.toUser)),
-    book = id => kindleBookQueries.resolve(id.value).map(_.map(_.toBook)),
-    users = () => twitterUserQueries.resolveAll.map(_.map(_.toUser)),
+  def withContext[A](f: Context[Effect] => Effect[A]): EffectWithEnv[A] =
+    getGraphQLContext.map(_.toContext).flatMap(f)
+
+  def rootQuery[A](name: String)(f: Context[Effect] => Effect[A]): EffectWithEnv[A] =
+    for {
+      graphQLContext <- getGraphQLContext
+      context = graphQLContext.toContext
+      result <- context.tracer.span(s"query:${name}")(f(graphQLContext.toContext))
+    } yield result
+  def rootMutation[A](name: String)(f: Context[Effect] => Effect[A]): EffectWithEnv[A] =
+    for {
+      graphQLContext <- getGraphQLContext
+      context = graphQLContext.toContext
+      result <- context.tracer.span(s"mutation:${name}")(f(graphQLContext.toContext))
+    } yield result
+
+  val queries: Queries[EffectWithEnv] = Queries(
+    user = id =>
+      rootQuery("user")(implicit ctx =>
+        twitterUserQueries.resolveByUsername(id.asTwitterUsername).map(_.map(_.toUser))),
+    book = id => rootQuery("book")(implicit ctx => kindleBookQueries.resolve(id.value).map(_.map(_.toBook))),
+    users = () => rootQuery("users")(implicit ctx => twitterUserQueries.resolveAll.map(_.map(_.toUser))),
   )
 
-  val mutations: Mutations[Effect] = Mutations(
-    importKindleBookQuotes = request => importKindleBookQuotesForUser(request.twitterUserId.asTwitterUserId).handleLeft
+  val mutations: Mutations[EffectWithEnv] = Mutations(
+    importUser = request =>
+      rootMutation("importUser")(implicit ctx => importUser(request.identity.value).handleLeft.map(Id.apply)),
+    importKindleBookQuotes = request =>
+      rootMutation("importKindleBookQuotes")(
+        implicit ctx =>
+          importKindleBookQuotesForUser(
+            twitterUserId = request.twitterUserId.asTwitterUserId,
+            importOption = request.toImportOption,
+          ).handleLeft),
+    startImportKindleBookQuotes = request =>
+      rootMutation("startImportKindleBookQuotes")(
+        implicit ctx =>
+          startImportKindleBookQuotesForUser(
+            twitterUserId = request.twitterUserId.asTwitterUserId,
+            importOption = request.toImportOption,
+          ).map(Id.apply))
   )
 
   implicit class TwitterUserOps(twitterUser: TwitterUser) {
 
-    def toUser: User[Effect] = User(
+    def toUser: User[EffectWithEnv] = User(
       id = Id(twitterUser.id),
       username = Id(twitterUser.username),
       books = kindleBookQueries.resolveByUserId(twitterUser.id).map(_.map(_.toBook)),
@@ -38,7 +80,7 @@ case class Resolvers[R <: Has[_]](
 
   implicit class KindleBookOps(kindleBook: KindleBook) {
 
-    def toBook: Book[Effect] = Book(
+    def toBook: Book[EffectWithEnv] = Book(
       id = Id(kindleBook.id),
       title = kindleBook.title,
       url = kindleBook.url.toString,
@@ -52,14 +94,15 @@ case class Resolvers[R <: Has[_]](
 
   implicit class KindleQuotedTweetOps(kindleQuotedTweet: KindleQuotedTweet) {
 
-    def toQuote: Quote[Effect] = Quote(
+    def toQuote: Quote[EffectWithEnv] = Quote(
       tweetId = Id(kindleQuotedTweet.tweetId),
       url = kindleQuotedTweet.quote.url.toString,
       body = kindleQuotedTweet.quote.body,
-      user = twitterUserQueries.resolve(kindleQuotedTweet.twitterUserId) flatMap {
-        case Some(twitterUser) => twitterUser.toUser.pure
-        case None              => new RuntimeException(s"user(${kindleQuotedTweet.twitterUserId}) doesn't exist.").raiseError
-      },
+      user = withContext(implicit ctx =>
+        twitterUserQueries.resolve(kindleQuotedTweet.twitterUserId) flatMap {
+          case Some(twitterUser) => twitterUser.toUser.pure
+          case None              => new RuntimeException(s"user(${kindleQuotedTweet.twitterUserId}) doesn't exist.").raiseError
+      }),
       book = kindleBookQueries.resolve(kindleQuotedTweet.bookId) flatMap {
         case Some(kindleBook) => kindleBook.toBook.pure
         case None =>
@@ -70,9 +113,7 @@ case class Resolvers[R <: Has[_]](
   }
 }
 
-trait ResolversOps[R] {
-  type Effect[A] = RIO[EnvWith[R], A]
-
+trait ResolversOps {
   trait ToCalibanError[A] {
 
     def toCalibanError(value: A): CalibanError
@@ -81,10 +122,12 @@ trait ResolversOps[R] {
 
   implicit val importKindleBookQuotesForUserErrorToCalibanError: ToCalibanError[ImportKindleBookQuotesForUser.Error] = {
     case EnsureTwitterUserExistence.UserNotFound(id) =>
-      CalibanError.ValidationError(
-        msg = "USER_NOT_FOUND",
-        explanatoryText = s"twitter user ${id} was not found"
-      )
+      CalibanError.ExecutionError(msg = s"user ${id} not found")
+  }
+
+  implicit val importUserErrorToCalibanErro: ToCalibanError[ImportUser.Error] = {
+    case ImportUser.UserNotFound(identity) =>
+      CalibanError.ExecutionError(msg = s"user ${identity} not found")
   }
 
   implicit class EffectEitherOps[A, B](fab: Effect[Either[A, B]]) {

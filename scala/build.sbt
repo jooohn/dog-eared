@@ -102,6 +102,8 @@ lazy val drivenAdapters = (project in file("driven-adapters"))
       "org.http4s" %% "http4s-blaze-client" % http4sVersion,
       "org.http4s" %% "http4s-circe" % http4sVersion,
       "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2",
+      "com.amazonaws" % "aws-xray-recorder-sdk-core" % "2.6.1",
+      "com.amazonaws" % "aws-xray-recorder-sdk-metrics" % "2.6.1",
     ),
     dependencyOverrides ++= Seq(
       "org.typelevel" %% "cats-core" % catsVersion,
@@ -152,7 +154,7 @@ lazy val cli = (project in file("cli"))
     daemonUser in Docker := s"${appName}",
     dockerUpdateLatest := true,
     region in Ecr := Region.getRegion(Regions.AP_NORTHEAST_1),
-    repositoryName in Ecr := appName,
+    repositoryName in Ecr := s"$appName-main",
     repositoryTags in Ecr ++= Seq(version.value),
     localDockerImage in Ecr := (packageName in Docker).value + ":" + (version in Docker).value,
     push in Ecr := ((push in Ecr) dependsOn (publishLocal in Docker, login in Ecr)).value,
@@ -165,8 +167,9 @@ lazy val tests = (project in file("tests"))
     name := s"${appName}-tests",
     libraryDependencies ++= Seq(
       "org.scalameta" %% "munit" % "0.4.5" % Test,
-      "org.scalameta" %% "munit-scalacheck" % "0.7.7" % Test
-    ),
+      "org.scalameta" %% "munit-scalacheck" % "0.7.7" % Test,
+      "org.typelevel" %% "cats-effect-laws" % catsEffectVersion % Test,
+),
     testFrameworks += new TestFramework("munit.Framework")
   )
   .dependsOn(useCases, drivenAdapters, app, cli)

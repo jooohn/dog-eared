@@ -4,6 +4,8 @@ import cats.effect.{Blocker, ContextShift, IO}
 import doobie.util.ExecutionContexts
 import doobie.util.transactor.Transactor
 import me.jooohn.dogeared.app.{AWSConfig, Config, CrawlerConfig, DBConfig, ServerConfig, TwitterConfig}
+import me.jooohn.dogeared.drivenadapters.ScalaLoggingLogger
+import me.jooohn.dogeared.drivenports.{Context, Tracer}
 
 package object dogeared {
 
@@ -19,7 +21,7 @@ package object dogeared {
     ),
     aws = AWSConfig.load[IO].unsafeRunSync(),
     crawler = CrawlerConfig.load[IO].unsafeRunSync(),
-    server = ServerConfig(8080),
+    server = ServerConfig(port = 8080, baseDomainName = "example.com"),
   )
 
   implicit val tx: Transactor.Aux[IO, Unit] = Transactor.fromDriverManager[IO](
@@ -30,4 +32,13 @@ package object dogeared {
     Blocker.liftExecutionContext(ExecutionContexts.synchronous)
   )
 
+  implicit val testContext: Context[IO] = Context(
+    logger = ScalaLoggingLogger.of("test"),
+    tracer = TestTracer()
+  )
+
+  case class TestTracer() extends Tracer[IO] {
+    override def span[A](name: String)(run: IO[A]): IO[A] = run
+    override val traceId: String = "test"
+  }
 }

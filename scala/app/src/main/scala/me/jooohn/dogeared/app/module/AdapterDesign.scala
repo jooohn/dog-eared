@@ -1,10 +1,13 @@
 package me.jooohn.dogeared.app.module
 
 import akka.actor.ActorSystem
-import cats.effect.Resource
+import cats.effect.{Resource, Timer}
 import cats.effect.concurrent.Semaphore
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.services.dynamodbv2.{AmazonDynamoDBAsync, AmazonDynamoDBAsyncClientBuilder}
+import com.amazonaws.xray.AWSXRayRecorderBuilder
+import com.amazonaws.xray.metrics.MetricsSegmentListener
+import com.amazonaws.xray.plugins.ECSPlugin
 import com.danielasfregola.twitter4s.TwitterRestClient
 import com.danielasfregola.twitter4s.entities.{AccessToken, ConsumerToken}
 import me.jooohn.dogeared.app.{AWSConfig, CrawlerConfig, TwitterConfig}
@@ -26,6 +29,17 @@ trait AdapterDesign { self: DSLBase with ConfigDesign =>
 
   implicit def ioHttp4sClient: Bind[Client[Effect]] =
     injectF(BlazeClientBuilder[Effect](scala.concurrent.ExecutionContext.Implicits.global).resource).singleton
+
+  implicit def tracer: Bind[XRayTracer[Effect]] =
+    injectF(
+      Resource.liftF(
+        Effect(
+          XRayTracer(
+            AWSXRayRecorderBuilder
+              .standard()
+              .withPlugin(new ECSPlugin())
+              .withSegmentListener(new MetricsSegmentListener())
+              .build())))).singleton
 
   implicit def scanamo: Bind[ScanamoCats[Effect]] = inject[AmazonDynamoDBAsync].map(ScanamoCats[Effect]).singleton
 
@@ -67,10 +81,9 @@ trait AdapterDesign { self: DSLBase with ConfigDesign =>
 
   implicit def dynamoTwitterUsers: Bind[DynamoTwitterUsers[Effect]] =
     singleton(for {
-      scanamo <- inject[ScanamoCats[Effect]]
-      logger <- inject[Logger]
+      scanamo <- inject[TracingScanamo[Effect]]
       awsConfig <- inject[AWSConfig]
-    } yield DynamoTwitterUsers(scanamo, logger, awsConfig.dynamodbUserShard))
+    } yield DynamoTwitterUsers(scanamo, awsConfig.dynamodbUserShard))
   implicit def twitterUsers: Bind[TwitterUsers[Effect]] = dynamoTwitterUsers.widen
   implicit def twitterUserQueries: Bind[TwitterUserQueries[Effect]] = dynamoTwitterUsers.widen
 
@@ -91,7 +104,7 @@ trait AdapterDesign { self: DSLBase with ConfigDesign =>
     singleton(for {
       restClient <- inject[TwitterRestClient]
       processedTweets <- inject[ProcessedTweets[Effect]]
-      concurrentEffect <- injectF(Resource.liftF(Semaphore[Effect](4) map FixedConcurrencyIO[Effect]))
+      concurrentEffect <- injectF(FixedConcurrentExecutor.resource(4))
     } yield Twitter4STwitter(restClient, processedTweets, concurrentEffect))
 
   implicit def kindleQuotePages: Bind[KindleQuotePages[Effect]] =

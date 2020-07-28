@@ -13,7 +13,6 @@ object Main
   override def main: Opts[URIO[zio.ZEnv, ExitCode]] = {
     val commands = new Commands(AppDesign.apply)
     Opts.subcommands(
-      commands.importTweets,
       commands.server,
     ) map (_.catchAll(e => (URIO(System.err.println(e)) as ExitCode.failure)))
   }
